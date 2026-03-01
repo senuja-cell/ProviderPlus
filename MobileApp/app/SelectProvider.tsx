@@ -36,9 +36,12 @@ interface Provider {
     description: string;
 }
 
+
 // 2. CARD COMPONENT
 const Card = ({ item }: { item: Provider }) => {
     // Placeholder image generator
+    const router = useRouter();
+
     const placeholderImage = `https://ui-avatars.com/api/?name=${encodeURIComponent(item.name)}&background=random&size=150`;
 
     return (
@@ -64,7 +67,7 @@ const Card = ({ item }: { item: Provider }) => {
 
                     <TouchableOpacity
                         style={styles.viewProfileBtn}
-                        onPress={() => console.log('Navigate to profile', item._id)}
+                        onPress={() => router.push('./Chat')}
                     >
                         <Text style={styles.viewProfileText}>View Profile</Text>
                     </TouchableOpacity>
@@ -76,6 +79,7 @@ const Card = ({ item }: { item: Provider }) => {
 
 export default function ProviderMarketplace() {
     const router = useRouter();
+
     // Get the params passed from the Home Screen
     const params = useLocalSearchParams();
 
@@ -92,6 +96,7 @@ export default function ProviderMarketplace() {
     const [searchText, setSearchText] = useState("");
 
     const fetchProviders = async () => {
+
         setLoading(true);
         let lat: number | undefined = undefined;
         let long: number | undefined = undefined;
@@ -185,6 +190,7 @@ export default function ProviderMarketplace() {
     }, []);
 
     return (
+
         <LinearGradient
             colors={['#4FC3F7', '#0072FF']}
             style={styles.container}
