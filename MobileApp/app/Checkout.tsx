@@ -3,7 +3,7 @@ import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Alert, ActivityIn
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { StripeProvider, useStripe } from '@stripe/stripe-react-native';
-import paymentService from '../services/paymentService';
+import paymentService from './services/paymentService';
 
 // --- CONFIGURATION ---
 const STRIPE_PUBLISHABLE_KEY = "pk_test_51T4PfEQgnci2gla4O6VjuJUXyHQ2bz8DRGWOh4diuzSr9oYowUg8aGuMKcmUkop4kc3PooHdEZWmV2WRZG91evas00K2MEFZV2";
@@ -75,7 +75,7 @@ const PaymentScreenContent: React.FC = () => {
 
                 <BlurView intensity={40} tint="light" style={styles.glassCard}>
                     <Text style={styles.label}>BOOKING FOR</Text>
-                    <Text style={styles.serviceName}>Advanced Tech Support</Text>
+                    <Text style={styles.serviceName}>Plumber</Text>
 
                     <View style={styles.divider} />
 
@@ -104,7 +104,7 @@ const PaymentScreenContent: React.FC = () => {
                     </LinearGradient>
                 </TouchableOpacity>
 
-                <Text style={styles.footerNote}>Demo Mode: Supervisor Review Copy</Text>
+                <Text style={styles.footerNote}>Providerplus Sri Lanka</Text>
             </ScrollView>
         </LinearGradient>
     );
