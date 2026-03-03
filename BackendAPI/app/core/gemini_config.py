@@ -16,4 +16,4 @@ if not GOOGLE_API_KEY:
 client = genai.Client(api_key=GOOGLE_API_KEY)
 
 # 4. (Optional) Centralized Configuration Constants
-MODEL_NAME = "gemini-2.0-flash-lite"
+MODEL_NAME = "gemini-2.5-flash"

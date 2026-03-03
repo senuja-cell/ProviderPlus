@@ -1,5 +1,6 @@
 from ..core.gemini_config import client, MODEL_NAME
 from ..models.request_models import AgentResponse
+from fastapi import HTTPException
 
 # this is the function to have conversations with gemini
 def get_chat_response(user_message: str, valid_categories: list[str]) -> AgentResponse:
@@ -86,8 +87,4 @@ def get_chat_response(user_message: str, valid_categories: list[str]) -> AgentRe
     # error handling
     except Exception as e:
         print(f"Chat Agent Error: {e}")
-        return AgentResponse(
-            reply_to_user="An unexpected error occurred. Please try again.",
-            needs_clarification=False,
-            search_filters=[]
-        )
+        raise HTTPException(status_code=503, detail="AI service currently unavailable")

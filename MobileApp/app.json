@@ -10,7 +10,10 @@
     "newArchEnabled": true,
     "ios": {
       "bundleIdentifier": "com.providerplus.app",
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.providerplus.app",
@@ -28,6 +31,13 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
+      [
+        "@stripe/stripe-react-native",
+        {
+          "merchantIdentifier": "merchant.com.providerplus",
+          "enableGooglePay": true
+        }
+      ],
       "expo-router",
       [
         "expo-splash-screen",
@@ -46,6 +56,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "e0bd8f87-07f7-400d-9650-0044873e0e99"
+      }
     }
   }
 }

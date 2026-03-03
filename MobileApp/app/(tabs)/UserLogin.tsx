@@ -332,7 +332,7 @@ const UserLogin: React.FC = () => {
                             {/* SIGN UP LINK */}
                             <Pressable
                                 style={styles.signupTextContainer}
-                                onPress={() => router.push('/UserSignUp1')}
+                                onPress={() => router.push('/UserSignUp')}
                                 disabled={isLoading}
                             >
                                 <Text style={styles.signupText}>{strings.signup}</Text>

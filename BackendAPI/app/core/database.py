@@ -8,6 +8,9 @@ from pymongo.errors import ServerSelectionTimeoutError
 from ..models.provider_model import Provider
 from ..models.user_model import User
 from ..models.category_model import Category
+from ..models.push_token_model import PushToken
+from ..models.message_model import Message
+from ..models.conversation_model import Conversation
 
 # function that connects the app with MongoDB
 async def init_db():
@@ -35,7 +38,10 @@ async def init_db():
                 # add the response models the database returns
                 Provider,
                 User,
-                Category
+                Category,
+                Conversation,
+                Message,
+                PushToken
             ]
         )
     # handling relevant errors

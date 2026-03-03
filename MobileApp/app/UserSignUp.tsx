@@ -22,7 +22,7 @@ import { configureGoogleSignIn, signInWithGoogle } from "./services/googleAuthSe
 type UserRole = 'customer' | 'provider';
 type Language = 'ENG' | 'සිං';
 
-const UserSignUp1 = ({ navigation }: any) => {
+const UserSignUp = ({ navigation }: any) => {
 
     useEffect(() => {
         configureGoogleSignIn();
@@ -740,4 +740,4 @@ const styles = StyleSheet.create({
     },
 });
 
-export default UserSignUp1;
+export default UserSignUp;
