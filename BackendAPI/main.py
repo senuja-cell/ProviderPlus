@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
-from app.routes import chatbot_routes, analysis_routes, auth_routes, provider_routes
+from app.routes import chatbot_routes, analysis_routes, auth_routes, provider_routes, geolocation_routes
 from app.core.database import init_db
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
@@ -34,21 +34,19 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allows ALL origins (perfect for dev/viva)
+    allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=["*"],  # Allows all methods (GET, POST, OPTIONS, etc.)
-    allow_headers=["*"],  # Allows all headers
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
-# ----------------------
-
 
 app.include_router(chatbot_routes.router, prefix="/api/ai-chat", tags=["AI Chat"])
 app.include_router(analysis_routes.router, prefix="/api/ai-integration", tags=["AI Integration"])
 app.include_router(auth_routes.router, prefix="/api", tags=["Authentication"])
 app.include_router(provider_routes.router, prefix="/api/category-search")
+app.include_router(geolocation_routes.router, prefix="/api")
 
 
 @app.get("/")
 def read_root():
     return {"message: Provider+ backend is running!"}
-
