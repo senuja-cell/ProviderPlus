@@ -18,6 +18,10 @@ import {
 } from './services/messagingApi';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
+/** Expo Router params can return string | string[] — always get a plain string */
+const asString = (v: string | string[] | undefined, fallback = ''): string =>
+    Array.isArray(v) ? v[0] : (v ?? fallback);
+
 
 /** "2025-07-14" → Date object */
 const parseDate = (s: string): Date => {
@@ -65,19 +69,18 @@ const formatTimeDisplay = (d: Date): string =>
 
 // ── component ─────────────────────────────────────────────────────────────────
 
-const ProviderChat = () => {
+const Chat = () => {
     const router = useRouter();
-    const {
-        conversationId,
-        providerId = '',
-        providerName = 'Provider',
-        providerRole = '',
-    } = useLocalSearchParams<{
+    const params = useLocalSearchParams<{
         conversationId: string;
         providerId?: string;
         providerName?: string;
         providerRole?: string;
     }>();
+    const conversationId = asString(params.conversationId);
+    const providerId     = asString(params.providerId);
+    const providerName   = asString(params.providerName, 'Provider');
+    const providerRole   = asString(params.providerRole);
 
     // ── chat state ────────────────────────────────────────────────────────────
     const [messages, setMessages]           = useState<Message[]>([]);
@@ -592,4 +595,4 @@ const styles = StyleSheet.create({
     finalizeBtnText: { color: '#fff', fontSize: 16, fontWeight: '800', letterSpacing: 0.5 },
 });
 
-export default ProviderChat;
+export default Chat;

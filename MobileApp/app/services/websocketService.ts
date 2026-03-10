@@ -1,9 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {Platform} from 'react-native';
+import {LAPTOP_IP} from './apiClient'
 
 
-const LAPTOP_IP = '192.168.1.4';
-const WS_BASE_URL = `ws://${LAPTOP_IP}:8000/api/messaging/ws`;
+const WS_BASE_URL = `ws://${LAPTOP_IP}:8001/api/messaging/ws`;
 
 // TYPES
 export interface Message{

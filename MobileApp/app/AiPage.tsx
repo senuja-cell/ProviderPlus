@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import {
     View,
@@ -12,12 +11,12 @@ import {
     KeyboardAvoidingView,
     Platform,
     StatusBar,
-    Alert,
     Animated,
     Easing
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
+import { useRouter } from 'expo-router';
 import { sendChatMessage } from './services/chatService';
 
 // --- TYPES ---
@@ -30,6 +29,7 @@ interface Message {
 }
 
 const App = () => {
+    const router = useRouter();
     const [inputText, setInputText] = useState("");
     const [messages, setMessages] = useState<Message[]>([]);
     const flatListRef = useRef<FlatList>(null);
@@ -160,7 +160,7 @@ const App = () => {
                         } else if (item.type === 'text') {
                             return <AnimatedMessageBubble message={item} index={index} />;
                         } else {
-                            return <AnimatedCardList data={item.data} />;
+                            return <AnimatedCardList data={item.data} router={router} />;
                         }
                     }}
                 />
@@ -282,20 +282,20 @@ const AnimatedMessageBubble = ({ message, index }: { message: Message; index: nu
 };
 
 // Animated Card List Component
-const AnimatedCardList = ({ data }: { data: any[] | undefined }) => {
+const AnimatedCardList = ({ data, router }: { data: any[] | undefined; router: any }) => {
     if (!data) return null;
 
     return (
         <View>
             {data.map((provider, index) => (
-                <AnimatedCard key={provider.id} provider={provider} index={index} />
+                <AnimatedCard key={provider._id} provider={provider} index={index} router={router} />
             ))}
         </View>
     );
 };
 
 // Individual Animated Card Component
-const AnimatedCard = ({ provider, index }: { provider: any; index: number }) => {
+const AnimatedCard = ({ provider, index, router }: { provider: any; index: number; router: any }) => {
     const scaleAnim = useRef(new Animated.Value(0.8)).current;
     const fadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -337,7 +337,7 @@ const AnimatedCard = ({ provider, index }: { provider: any; index: number }) => 
                     </Text>
                     <TouchableOpacity
                         style={styles.bookBtnContainer}
-                        onPress={() => Alert.alert("Booking Confirmed", `Request sent to ${provider.name}`)}
+                        onPress={() => router.push({ pathname: '/ProviderProfile', params: { id: provider._id } })}
                         activeOpacity={0.8}
                     >
                         <LinearGradient colors={['#E440FF', '#5A1F63']} style={styles.bookBtnGradient}>
