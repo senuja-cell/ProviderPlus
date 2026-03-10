@@ -18,7 +18,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Location from 'expo-location';
-// @ts-ignore
 import { fetchProvidersByCategory, Provider } from './services/providerService';
 import {provider} from "@expo/config-plugins/build/plugins/createBaseMod";
 
@@ -85,67 +84,80 @@ export default function ProviderMarketplace() {
     const [loading, setLoading] = useState(true);
     const [searchText, setSearchText] = useState("");
 
+    const getLocationWithFallback = (): Promise<Location.LocationObject> => {
+        return new Promise(async (resolve, reject) => {
+            const timeout = setTimeout(() => {
+                reject(new Error("Location timed out"));
+            }, 15000);
+
+            try {
+                // Try Low accuracy first (fastest — uses WiFi/cell towers)
+                const location = await Location.getCurrentPositionAsync({
+                    accuracy: Location.Accuracy.Low,
+                    distanceInterval: 0,
+                    mayShowUserSettingsDialog: false,
+                });
+                clearTimeout(timeout);
+                resolve(location);
+            } catch {
+                try {
+                    // Fallback to Lowest — basically just cell tower
+                    const location = await Location.getCurrentPositionAsync({
+                        accuracy: Location.Accuracy.Lowest,
+                        mayShowUserSettingsDialog: false,
+                    });
+                    clearTimeout(timeout);
+                    resolve(location);
+                } catch (err) {
+                    clearTimeout(timeout);
+                    reject(err);
+                }
+            }
+        });
+    };
+
     const fetchProviders = async () => {
 
         setLoading(true);
         let lat: number | undefined = undefined;
         let long: number | undefined = undefined;
 
-        // SEPARATE location fetching from API call - location errors shouldn't block API
         try {
-            console.log("📡 1. Checking Location Services...");
             const enabled = await Location.hasServicesEnabledAsync();
 
             if (enabled) {
-                console.log("📡 2. Checking Permissions...");
                 let { status } = await Location.requestForegroundPermissionsAsync();
 
                 if (status === 'granted') {
-                    console.log("📡 3. Fetching Coordinates (5s Timeout)...");
+                    console.log("📡 Fetching location...");
+
                     try {
-                        // 1. Create the Location Promise
-                        const locationPromise = Location.getCurrentPositionAsync({
-                            accuracy: Location.Accuracy.Balanced,
-                        });
-
-                        // 2. Create a Timeout Promise (Rejects after 5000ms)
-                        const timeoutPromise = new Promise((_, reject) =>
-                            setTimeout(() => reject(new Error("Location request timed out")), 5000)
-                        );
-
-                        // 3. Race them!
-                        const location: any = await Promise.race([locationPromise, timeoutPromise]);
-
+                        const location = await getLocationWithFallback();
                         lat = location.coords.latitude;
                         long = location.coords.longitude;
-                        console.log(`📍 User found at: ${lat}, ${long}`);
+                        console.log(`📍 Got location: ${lat}, ${long}`);
 
                     } catch (locError) {
-                        console.warn("⚠️ GPS Timed Out or Failed:", locError);
+                        console.warn("⚠️ GPS failed, trying last known:", locError);
 
-                        // Fallback: Try Last Known Location (Cache)
-                        try {
-                            const lastKnown = await Location.getLastKnownPositionAsync({});
-                            if (lastKnown) {
-                                lat = lastKnown.coords.latitude;
-                                long = lastKnown.coords.longitude;
-                                console.log(`📍 Using Cached Location: ${lat}, ${long}`);
-                            } else {
-                                console.log("📍 No cached location available");
-                            }
-                        } catch (cacheError) {
-                            console.warn("⚠️ Could not get cached location:", cacheError);
+                        // Try last known — will only work if location was fetched before
+                        const lastKnown = await Location.getLastKnownPositionAsync({
+                            maxAge: 5 * 60 * 1000, // only use if less than 5 mins old
+                            requiredAccuracy: 100,  // within 100 meters
+                        });
+
+                        if (lastKnown) {
+                            lat = lastKnown.coords.latitude;
+                            long = lastKnown.coords.longitude;
+                            console.log(`📍 Using cached location: ${lat}, ${long}`);
+                        } else {
+                            console.log("📍 No location available, proceeding without it");
                         }
                     }
-                } else {
-                    console.log("⚠️ Location Permission Denied");
                 }
-            } else {
-                console.log("⚠️ Location Services are disabled.");
             }
-        } catch (locationError: any) {
-            // Log location errors but don't let them stop the API call
-            console.warn("⚠️ Location Error (will proceed without location):", locationError);
+        } catch (locationError) {
+            console.warn("⚠️ Location error:", locationError);
         }
 
         // ALWAYS call the API, even if location failed

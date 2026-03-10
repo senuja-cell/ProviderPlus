@@ -2,6 +2,8 @@ import os
 import traceback
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse
+from app.routes import chatbot_routes, analysis_routes, auth_routes, provider_routes, geolocation_routes
+from app.core.database import init_db
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
@@ -116,6 +118,7 @@ app.include_router(analysis_routes.router, prefix="/api/ai-integration", tags=["
 
 # Auth Routes
 app.include_router(auth_routes.router, prefix="/api", tags=["Authentication"])
+app.include_router(geolocation_routes.router, prefix="/api")
 
 # Provider Routes
 app.include_router(provider_routes.router, prefix="/api/category-search", tags=["Provider Search"])
