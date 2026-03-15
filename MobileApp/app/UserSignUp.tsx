@@ -1,422 +1,215 @@
 import React, { useState, useEffect } from 'react';
 import {
-    View,
-    Text,
-    TextInput,
-    Pressable,
-    Image,
-    ScrollView,
-    StyleSheet,
-    ActivityIndicator,
-    Alert
+    View, Text, TextInput, Pressable, Image,
+    ScrollView, StyleSheet, ActivityIndicator,
+    Alert, StatusBar, KeyboardAvoidingView, Platform,
+    TouchableOpacity,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { globalStyles, COLORS } from '@/app/styles/UserSignUpStyles';
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { signupUser } from './services/authService';
-import {MaterialCommunityIcons} from "@expo/vector-icons";
-import { configureGoogleSignIn, signInWithGoogle } from "./services/googleAuthService";
+import { configureGoogleSignIn, signInWithGoogle } from './services/googleAuthService';
 
-type UserRole = 'customer' | 'provider';
-type Language = 'ENG' | 'සිං';
+// ── Component ─────────────────────────────────────────────────────────────────
 
-const UserSignUp = ({ navigation }: any) => {
+const UserSignUp = () => {
 
     useEffect(() => {
         configureGoogleSignIn();
     }, []);
 
-    // Language toggle
-    const [language, setLanguage] = useState<Language>('ENG');
-    const [isTranslating, setIsTranslating] = useState<boolean>(false);
+    // Form fields
+    const [fullName, setFullName]               = useState('');
+    const [email, setEmail]                     = useState('');
+    const [password, setPassword]               = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [phoneNumber, setPhoneNumber]         = useState('');
 
-    // Role toggle
-    const [userRole, setUserRole] = useState<UserRole>("customer");
-
-    // Form fields for CUSTOMER
-    const [fullName, setFullName] = useState("");
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
-    const [confirmPassword, setConfirmPassword] = useState("");
-    const [phoneNumber, setPhoneNumber] = useState("");
-    const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-
-    // Error states
-    const [fullNameError, setFullNameError] = useState("");
-    const [emailError, setEmailError] = useState("");
-    const [passwordError, setPasswordError] = useState("");
-    const [confirmPasswordError, setConfirmPasswordError] = useState("");
-    const [phoneError, setPhoneError] = useState("");
-
-    // Password visibility toggles
-    const [showPassword, setShowPassword] = useState(false);
+    // UI state
+    const [showPassword, setShowPassword]             = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const [isLoading, setIsLoading]                   = useState(false);
+    const [isGoogleLoading, setIsGoogleLoading]       = useState(false);
 
-    // Loading state for API call
-    const [isLoading, setIsLoading] = useState(false);
+    // Field errors
+    const [fullNameError, setFullNameError]             = useState('');
+    const [emailError, setEmailError]                   = useState('');
+    const [passwordError, setPasswordError]             = useState('');
+    const [confirmPasswordError, setConfirmPasswordError] = useState('');
+    const [phoneError, setPhoneError]                   = useState('');
 
-    // Validation functions
+    // ── Validation ─────────────────────────────────────────────────────────────
+
     const handleFullNameInput = (text: string) => {
-        // Allow letters and spaces only
-        const filteredText = text.replace(/[^a-zA-Z\s]/g, '');
-        setFullName(filteredText);
-
-        if (filteredText.trim().length === 0) {
-            setFullNameError("Full name is required");
-        } else if (filteredText.trim().length < 3) {
-            setFullNameError("Full name must be at least 3 characters");
-        } else {
-            setFullNameError("");
-        }
+        const filtered = text.replace(/[^a-zA-Z\s]/g, '');
+        setFullName(filtered);
+        if (filtered.trim().length === 0)       setFullNameError('Full name is required');
+        else if (filtered.trim().length < 3)    setFullNameError('Full name must be at least 3 characters');
+        else                                    setFullNameError('');
     };
-
-    const handleGoogleSignIn = async (): Promise<void> => {
-        setIsGoogleLoading(true);
-
-        try{
-            const response = await signInWithGoogle();
-
-            const welcomeMessage = response.is_new_user
-                ? `Welcome ${response.user_name}! Your account has been created.`
-                : `Welcome back, ${response.user_name}!`;
-
-            Alert.alert(
-                "Success!",
-                welcomeMessage,
-                [
-                    {
-                        text: "OK",
-                        onPress: () => {
-                            router.replace('/(tabs)');
-                        }
-                    }
-                ]
-            );
-
-        }
-        catch (error: any) {
-            Alert.alert(
-                "Google Sign-In Failed",
-                error.message || "Unable to sign in with Google. Please try again.",
-                [{ text: "OK" }]
-            );
-        }
-        finally {
-            setIsGoogleLoading(false);
-        }
-    }
 
     const validateEmail = (text: string) => {
         setEmail(text);
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-        if (text.trim().length === 0) {
-            setEmailError("Email is required");
-        } else if (!emailRegex.test(text)) {
-            setEmailError("Invalid email format (e.g., user@example.com)");
-        } else {
-            setEmailError("");
-        }
+        if (text.trim().length === 0)           setEmailError('Email is required');
+        else if (!emailRegex.test(text))        setEmailError('Invalid email format');
+        else                                    setEmailError('');
     };
 
     const handlePasswordInput = (text: string) => {
         setPassword(text);
+        if (text.length === 0)                  setPasswordError('Password is required');
+        else if (text.length < 8)               setPasswordError('Minimum 8 characters');
+        else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])/.test(text))
+            setPasswordError('Must include uppercase, lowercase and a number');
+        else                                    setPasswordError('');
 
-        if (text.length === 0) {
-            setPasswordError("Password is required");
-        } else if (text.length < 8) {
-            setPasswordError("Password must be at least 8 characters");
-        } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])/.test(text)) {
-            setPasswordError("Password must contain uppercase, lowercase, and number");
-        } else {
-            setPasswordError("");
-        }
-
-        // Re-validate confirm password if it's already filled
         if (confirmPassword) {
-            if (text !== confirmPassword) {
-                setConfirmPasswordError("Passwords do not match");
-            } else {
-                setConfirmPasswordError("");
-            }
+            setConfirmPasswordError(text !== confirmPassword ? 'Passwords do not match' : '');
         }
     };
 
     const handleConfirmPasswordInput = (text: string) => {
         setConfirmPassword(text);
-
-        if (text.length === 0) {
-            setConfirmPasswordError("Please confirm your password");
-        } else if (text !== password) {
-            setConfirmPasswordError("Passwords do not match");
-        } else {
-            setConfirmPasswordError("");
-        }
+        if (text.length === 0)          setConfirmPasswordError('Please confirm your password');
+        else if (text !== password)     setConfirmPasswordError('Passwords do not match');
+        else                            setConfirmPasswordError('');
     };
 
     const handlePhoneInput = (text: string) => {
-        // Only numbers allowed
-        const filteredText = text.replace(/[^0-9]/g, '');
-
-        if (filteredText.length <= 10) {
-            setPhoneNumber(filteredText);
-
-            if (filteredText.length === 0) {
-                setPhoneError("Phone number is required");
-            } else if (filteredText.length < 10) {
-                setPhoneError("Phone number must be exactly 10 digits");
-            } else {
-                setPhoneError("");
-            }
+        const filtered = text.replace(/[^0-9]/g, '');
+        if (filtered.length <= 10) {
+            setPhoneNumber(filtered);
+            if (filtered.length === 0)          setPhoneError('Phone number is required');
+            else if (filtered.length < 10)      setPhoneError('Phone number must be exactly 10 digits');
+            else                                setPhoneError('');
         }
     };
 
-    // Submit handler with API call
+    // ── Google sign-in ─────────────────────────────────────────────────────────
+
+    const handleGoogleSignIn = async () => {
+        setIsGoogleLoading(true);
+        try {
+            const response = await signInWithGoogle();
+            const msg = response.is_new_user
+                ? `Welcome ${response.user_name}! Your account has been created.`
+                : `Welcome back, ${response.user_name}!`;
+            Alert.alert('Success!', msg, [{ text: 'OK', onPress: () => router.replace('/(tabs)') }]);
+        } catch (error: any) {
+            Alert.alert('Google Sign-In Failed', error.message || 'Unable to sign in with Google.', [{ text: 'OK' }]);
+        } finally {
+            setIsGoogleLoading(false);
+        }
+    };
+
+    // ── Submit ─────────────────────────────────────────────────────────────────
+
     const handleSignUp = async () => {
         let hasError = false;
 
-        // Validate all fields
-        if (!fullName.trim()) {
-            setFullNameError("Full name is required");
-            hasError = true;
-        } else if (fullName.trim().length < 3) {
-            setFullNameError("Full name must be at least 3 characters");
-            hasError = true;
-        }
+        if (!fullName.trim()) { setFullNameError('Full name is required'); hasError = true; }
+        else if (fullName.trim().length < 3) { setFullNameError('Full name must be at least 3 characters'); hasError = true; }
 
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!email.trim()) {
-            setEmailError("Email is required");
-            hasError = true;
-        } else if (!emailRegex.test(email)) {
-            setEmailError("Invalid email format");
-            hasError = true;
+        if (!email.trim()) { setEmailError('Email is required'); hasError = true; }
+        else if (!emailRegex.test(email)) { setEmailError('Invalid email format'); hasError = true; }
+
+        if (!password) { setPasswordError('Password is required'); hasError = true; }
+        else if (password.length < 8) { setPasswordError('Minimum 8 characters'); hasError = true; }
+        else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])/.test(password)) {
+            setPasswordError('Must include uppercase, lowercase and a number'); hasError = true;
         }
 
-        if (!password) {
-            setPasswordError("Password is required");
-            hasError = true;
-        } else if (password.length < 8) {
-            setPasswordError("Password must be at least 8 characters");
-            hasError = true;
-        } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])/.test(password)) {
-            setPasswordError("Password must contain uppercase, lowercase, and number");
-            hasError = true;
-        }
+        if (!confirmPassword) { setConfirmPasswordError('Please confirm your password'); hasError = true; }
+        else if (confirmPassword !== password) { setConfirmPasswordError('Passwords do not match'); hasError = true; }
 
-        if (!confirmPassword) {
-            setConfirmPasswordError("Please confirm your password");
-            hasError = true;
-        } else if (confirmPassword !== password) {
-            setConfirmPasswordError("Passwords do not match");
-            hasError = true;
-        }
-
-        if (!phoneNumber.trim()) {
-            setPhoneError("Phone number is required");
-            hasError = true;
-        } else if (phoneNumber.length !== 10) {
-            setPhoneError("Phone number must be exactly 10 digits");
-            hasError = true;
-        }
+        if (!phoneNumber.trim()) { setPhoneError('Phone number is required'); hasError = true; }
+        else if (phoneNumber.length !== 10) { setPhoneError('Phone number must be exactly 10 digits'); hasError = true; }
 
         if (hasError) {
-            Alert.alert("Validation Error", "Please fix all errors before proceeding");
+            Alert.alert('Validation Error', 'Please fix all errors before proceeding');
             return;
         }
 
-        // Call API
         setIsLoading(true);
         try {
             const response = await signupUser({
                 full_name: fullName.trim(),
                 email: email.trim().toLowerCase(),
-                password: password,
+                password,
                 phone_number: phoneNumber,
-                role: userRole
+                role: 'customer',
             });
-
             Alert.alert(
-                "Success!",
-                `Welcome ${response.user_name}! Your account has been created.`,
-                [
-                    {
-                        text: "OK",
-                        onPress: () => {
-                            // Navigate to home page
-                            router.replace('/(tabs)');
-                        }
-                    }
-                ]
+                'Welcome!',
+                `Your account has been created, ${response.user_name}.`,
+                [{ text: 'OK', onPress: () => router.replace('/(tabs)') }]
             );
-
         } catch (error: any) {
-            // Show error message
-            Alert.alert(
-                "Signup Failed",
-                error.message || "Something went wrong. Please try again.",
-                [{ text: "OK" }]
-            );
+            Alert.alert('Sign Up Failed', error.message || 'Something went wrong. Please try again.', [{ text: 'OK' }]);
         } finally {
             setIsLoading(false);
         }
     };
 
-    // Render Provider View (Coming Soon)
-    if (userRole === 'provider') {
-        return (
-            <View style={globalStyles.mainContainer}>
-                <LinearGradient colors={COLORS.userGradient} style={StyleSheet.absoluteFill} />
-                <SafeAreaView style={globalStyles.safeArea}>
-                    {/* Language Toggle */}
-                    <View style={styles.headerToggleLang}>
-                        <View style={styles.langToggleContainer}>
-                            <View style={styles.toggleBackground}>
-                                <Pressable style={styles.langButton} onPress={() => setLanguage('ENG')}>
-                                    {language === 'ENG' && (
-                                        <LinearGradient
-                                            colors={['#E440FF', '#5A1F63']}
-                                            style={[StyleSheet.absoluteFill, { borderRadius: 15 }]}
-                                        />
-                                    )}
-                                    <Text style={[styles.langText, language === 'ENG' && styles.activeToggleText]}>
-                                        ENG
-                                    </Text>
-                                </Pressable>
-                                <Pressable style={styles.langButton} onPress={() => setLanguage('සිං')}>
-                                    {language === 'සිං' && (
-                                        <LinearGradient
-                                            colors={['#E440FF', '#5A1F63']}
-                                            style={[StyleSheet.absoluteFill, { borderRadius: 15 }]}
-                                        />
-                                    )}
-                                    <Text style={[styles.langText, language === 'සිං' && styles.activeToggleText]}>
-                                        සිං
-                                    </Text>
-                                </Pressable>
-                            </View>
-                        </View>
-                        {isTranslating && (
-                            <ActivityIndicator size="small" color="#FFF" style={{ marginLeft: 10 }} />
-                        )}
-                    </View>
+    // ── Render ─────────────────────────────────────────────────────────────────
 
-                    {/* Role Toggle */}
-                    <View style={styles.inlineRoleToggle}>
-                        <View style={styles.toggleBackground}>
-                            <Pressable style={styles.toggleButton} onPress={() => setUserRole('customer')}>
-                                <Text style={styles.toggleText}>Customer</Text>
-                            </Pressable>
-                            <Pressable style={styles.toggleButton} onPress={() => setUserRole('provider')}>
-                                <LinearGradient
-                                    colors={['#00ADF5', '#0066CC']}
-                                    style={[StyleSheet.absoluteFill, { borderRadius: 25 }]}
-                                />
-                                <Text style={[styles.toggleText, { color: '#FFF' }]}>Provider</Text>
-                            </Pressable>
-                        </View>
-                    </View>
-
-                    <View style={styles.comingSoonContainer}>
-                        <Text style={styles.comingSoonTitle}>Provider Registration</Text>
-                        <Text style={styles.comingSoonText}>Coming Soon!</Text>
-                        <Text style={styles.comingSoonSubtext}>
-                            Provider signup requires additional verification and documentation.
-                        </Text>
-                    </View>
-                </SafeAreaView>
-            </View>
-        );
-    }
-
-    // Render Customer Sign Up Form
     return (
-        <View style={globalStyles.mainContainer}>
-            <LinearGradient colors={COLORS.userGradient} style={StyleSheet.absoluteFill} />
-            <SafeAreaView style={globalStyles.safeArea}>
-                <ScrollView
-                    showsVerticalScrollIndicator={false}
-                    contentContainerStyle={{ paddingBottom: 40 }}
+        <View style={styles.mainContainer}>
+            <StatusBar barStyle="light-content" />
+            <LinearGradient
+                colors={['#00ADF5', '#004eba']}
+                style={StyleSheet.absoluteFill}
+                start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+            />
+
+            <SafeAreaView style={styles.safeArea}>
+                <KeyboardAvoidingView
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                    style={{ flex: 1 }}
                 >
-                    {/* Language Toggle */}
-                    <View style={styles.headerToggleLang}>
-                        <View style={styles.langToggleContainer}>
-                            <View style={styles.toggleBackground}>
-                                <Pressable style={styles.langButton} onPress={() => setLanguage('ENG')}>
-                                    {language === 'ENG' && (
-                                        <LinearGradient
-                                            colors={['#E440FF', '#5A1F63']}
-                                            style={[StyleSheet.absoluteFill, { borderRadius: 15 }]}
-                                        />
-                                    )}
-                                    <Text style={[styles.langText, language === 'ENG' && styles.activeToggleText]}>
-                                        ENG
-                                    </Text>
-                                </Pressable>
-                                <Pressable style={styles.langButton} onPress={() => setLanguage('සිං')}>
-                                    {language === 'සිං' && (
-                                        <LinearGradient
-                                            colors={['#E440FF', '#5A1F63']}
-                                            style={[StyleSheet.absoluteFill, { borderRadius: 15 }]}
-                                        />
-                                    )}
-                                    <Text style={[styles.langText, language === 'සිං' && styles.activeToggleText]}>
-                                        සිං
-                                    </Text>
-                                </Pressable>
-                            </View>
-                        </View>
-                        {isTranslating && (
-                            <ActivityIndicator size="small" color="#FFF" style={{ marginLeft: 10 }} />
-                        )}
-                    </View>
+                    <ScrollView
+                        contentContainerStyle={styles.scrollContent}
+                        showsVerticalScrollIndicator={false}
+                        keyboardShouldPersistTaps="handled"
+                    >
+                        {/* Back button */}
+                        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+                            <Ionicons name="arrow-back" size={22} color="#fff" />
+                        </TouchableOpacity>
 
-                    {/* Title */}
-                    <Text style={globalStyles.title}>Create Your Account</Text>
+                        {/* Title */}
+                        <Text style={styles.title}>Create Account</Text>
+                        <Text style={styles.subtitle}>Sign up as a customer</Text>
 
-                    {/* Role Toggle */}
-                    <View style={styles.inlineRoleToggle}>
-                        <View style={styles.toggleBackground}>
-                            <Pressable style={styles.toggleButton} onPress={() => setUserRole('customer')}>
-                                <LinearGradient
-                                    colors={['#00ADF5', '#0066CC']}
-                                    style={[StyleSheet.absoluteFill, { borderRadius: 25 }]}
-                                />
-                                <Text style={[styles.toggleText, { color: '#FFF' }]}>Customer</Text>
-                            </Pressable>
-                            <Pressable style={styles.toggleButton} onPress={() => setUserRole('provider')}>
-                                <Text style={styles.toggleText}>Provider</Text>
-                            </Pressable>
-                        </View>
-                    </View>
-
-                    {/* FULL NAME */}
-                    <View>
-                        <BlurView intensity={20} style={globalStyles.inputWrapper}>
+                        {/* ── Full Name ── */}
+                        <Text style={styles.fieldLabel}>Full Name</Text>
+                        <BlurView intensity={25} tint="light" style={styles.inputWrapper}>
+                            <Ionicons name="person-outline" size={18} color="rgba(255,255,255,0.7)" style={styles.inputIcon} />
                             <TextInput
-                                placeholder="Full Name"
-                                placeholderTextColor="rgba(255,255,255,0.6)"
-                                style={globalStyles.textInput}
+                                style={styles.textInput}
+                                placeholder="Your full name"
+                                placeholderTextColor="rgba(255,255,255,0.5)"
                                 value={fullName}
                                 onChangeText={handleFullNameInput}
                                 autoCapitalize="words"
                                 editable={!isLoading}
                             />
                         </BlurView>
-                        {fullNameError ? (
-                            <Text style={styles.errorText}>{fullNameError}</Text>
-                        ) : null}
-                    </View>
+                        {fullNameError ? <Text style={styles.errorText}>{fullNameError}</Text> : null}
 
-                    {/* EMAIL */}
-                    <View>
-                        <BlurView intensity={20} style={globalStyles.inputWrapper}>
+                        {/* ── Email ── */}
+                        <Text style={styles.fieldLabel}>Email</Text>
+                        <BlurView intensity={25} tint="light" style={styles.inputWrapper}>
+                            <Ionicons name="mail-outline" size={18} color="rgba(255,255,255,0.7)" style={styles.inputIcon} />
                             <TextInput
-                                placeholder="Email"
-                                placeholderTextColor="rgba(255,255,255,0.6)"
-                                style={globalStyles.textInput}
+                                style={styles.textInput}
+                                placeholder="you@example.com"
+                                placeholderTextColor="rgba(255,255,255,0.5)"
                                 value={email}
                                 onChangeText={validateEmail}
                                 keyboardType="email-address"
@@ -424,18 +217,16 @@ const UserSignUp = ({ navigation }: any) => {
                                 editable={!isLoading}
                             />
                         </BlurView>
-                        {emailError ? (
-                            <Text style={styles.errorText}>{emailError}</Text>
-                        ) : null}
-                    </View>
+                        {emailError ? <Text style={styles.errorText}>{emailError}</Text> : null}
 
-                    {/* PHONE NUMBER */}
-                    <View>
-                        <BlurView intensity={20} style={globalStyles.inputWrapper}>
+                        {/* ── Phone ── */}
+                        <Text style={styles.fieldLabel}>Phone Number</Text>
+                        <BlurView intensity={25} tint="light" style={styles.inputWrapper}>
+                            <Ionicons name="call-outline" size={18} color="rgba(255,255,255,0.7)" style={styles.inputIcon} />
                             <TextInput
-                                placeholder="Phone Number"
-                                placeholderTextColor="rgba(255,255,255,0.6)"
-                                style={globalStyles.textInput}
+                                style={styles.textInput}
+                                placeholder="0771234567"
+                                placeholderTextColor="rgba(255,255,255,0.5)"
                                 value={phoneNumber}
                                 onChangeText={handlePhoneInput}
                                 keyboardType="phone-pad"
@@ -443,301 +234,165 @@ const UserSignUp = ({ navigation }: any) => {
                                 editable={!isLoading}
                             />
                         </BlurView>
-                        {phoneError ? (
-                            <Text style={styles.errorText}>{phoneError}</Text>
-                        ) : null}
-                    </View>
+                        {phoneError ? <Text style={styles.errorText}>{phoneError}</Text> : null}
 
-                    {/* PASSWORD */}
-                    <View>
-                        <BlurView intensity={20} style={globalStyles.inputWrapper}>
+                        {/* ── Password ── */}
+                        <Text style={styles.fieldLabel}>Password</Text>
+                        <BlurView intensity={25} tint="light" style={styles.inputWrapper}>
+                            <Ionicons name="lock-closed-outline" size={18} color="rgba(255,255,255,0.7)" style={styles.inputIcon} />
                             <TextInput
-                                placeholder="Password"
-                                placeholderTextColor="rgba(255,255,255,0.6)"
-                                style={[globalStyles.textInput, { flex: 1 }]}
+                                style={styles.textInput}
+                                placeholder="Min. 8 characters"
+                                placeholderTextColor="rgba(255,255,255,0.5)"
                                 value={password}
                                 onChangeText={handlePasswordInput}
                                 secureTextEntry={!showPassword}
                                 autoCapitalize="none"
                                 editable={!isLoading}
                             />
-                            <Pressable
-                                onPress={() => setShowPassword(!showPassword)}
-                                style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1 })}
-                            >
-                                <MaterialCommunityIcons
-                                    name={showPassword ? "eye" : "eye-off"}
-                                    size={24}
-                                    color="#666"
+                            <Pressable onPress={() => setShowPassword(v => !v)}>
+                                <Ionicons
+                                    name={showPassword ? 'eye-outline' : 'eye-off-outline'}
+                                    size={20} color="rgba(255,255,255,0.7)"
                                 />
                             </Pressable>
                         </BlurView>
-                        {passwordError ? (
-                            <Text style={styles.errorText}>{passwordError}</Text>
-                        ) : null}
-                    </View>
+                        {passwordError ? <Text style={styles.errorText}>{passwordError}</Text> : null}
 
-                    {/* CONFIRM PASSWORD */}
-                    <View>
-                        <BlurView intensity={20} style={globalStyles.inputWrapper}>
+                        {/* ── Confirm Password ── */}
+                        <Text style={styles.fieldLabel}>Confirm Password</Text>
+                        <BlurView intensity={25} tint="light" style={styles.inputWrapper}>
+                            <Ionicons name="lock-closed-outline" size={18} color="rgba(255,255,255,0.7)" style={styles.inputIcon} />
                             <TextInput
-                                placeholder="Confirm Password"
-                                placeholderTextColor="rgba(255,255,255,0.6)"
-                                style={[globalStyles.textInput, { flex: 1 }]}
+                                style={styles.textInput}
+                                placeholder="Repeat password"
+                                placeholderTextColor="rgba(255,255,255,0.5)"
                                 value={confirmPassword}
                                 onChangeText={handleConfirmPasswordInput}
                                 secureTextEntry={!showConfirmPassword}
                                 autoCapitalize="none"
                                 editable={!isLoading}
                             />
-                            <Pressable
-                                onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                                style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1 })}
-                            >
-                                <MaterialCommunityIcons
-                                    name={showConfirmPassword ? "eye" : "eye-off"}
-                                    size={24}
-                                    color="#666"
+                            <Pressable onPress={() => setShowConfirmPassword(v => !v)}>
+                                <Ionicons
+                                    name={showConfirmPassword ? 'eye-outline' : 'eye-off-outline'}
+                                    size={20} color="rgba(255,255,255,0.7)"
                                 />
                             </Pressable>
                         </BlurView>
-                        {confirmPasswordError ? (
-                            <Text style={styles.errorText}>{confirmPasswordError}</Text>
-                        ) : null}
-                    </View>
+                        {confirmPasswordError ? <Text style={styles.errorText}>{confirmPasswordError}</Text> : null}
 
-                    {/* Sign Up Button */}
-                    <Pressable
-                        style={[styles.signUpButton, isLoading && styles.signUpButtonDisabled]}
-                        onPress={handleSignUp}
-                        disabled={isLoading}
-                    >
-                        <LinearGradient
-                            colors={isLoading ? ['#999', '#666'] : ['#00ADF5', '#0066CC']}
-                            style={styles.signUpGradient}
+                        {/* ── Sign Up button ── */}
+                        <Pressable
+                            style={[styles.submitBtn, isLoading && styles.submitBtnDisabled]}
+                            onPress={handleSignUp}
+                            disabled={isLoading}
                         >
-                            {isLoading ? (
-                                <ActivityIndicator color="#FFF" size="small" />
-                            ) : (
-                                <Text style={styles.signUpButtonText}>Sign Up</Text>
-                            )}
-                        </LinearGradient>
-                    </Pressable>
-
-                    {/* OR DIVIDER */}
-                    <View style={styles.dividerContainer}>
-                        <View style={styles.divider} />
-                        <Text style={styles.dividerText}>OR</Text>
-                        <View style={styles.divider} />
-                    </View>
-
-                    {/* GOOGLE SIGN-IN BUTTON */}
-                    <Pressable
-                        style={[styles.googleButton, (isLoading || isGoogleLoading) && styles.googleButtonDisabled]}
-                        onPress={handleGoogleSignIn}
-                        disabled={isLoading || isGoogleLoading}
-                    >
-                        {isGoogleLoading ? (
-                            <ActivityIndicator color="#FFF" size="small" />
-                        ) : (
-                            <>
-                                <Image
-                                    source={{ uri: "https://www.google.com/images/branding/googleg/1x/googleg_standard_color_128dp.png" }}
-                                    style={styles.googleIcon}
-                                />
-                                <Text style={styles.googleButtonText}>Continue with Google</Text>
-                            </>
-                        )}
-                    </Pressable>
-
-
-                    {/* Already have account */}
-                    <View style={styles.loginLinkContainer}>
-                        <Text style={styles.loginLinkText}>Already have an account? </Text>
-                        <Pressable onPress={() => router.push('.//(tabs)')} disabled={isLoading}>
-                            <Text style={styles.loginLink}>Log In</Text>
+                            {isLoading
+                                ? <ActivityIndicator color="#000" size="small" />
+                                : <Text style={styles.submitBtnText}>CREATE ACCOUNT</Text>
+                            }
                         </Pressable>
-                    </View>
-                </ScrollView>
+
+                        {/* ── OR divider ── */}
+                        <View style={styles.dividerContainer}>
+                            <View style={styles.divider} />
+                            <Text style={styles.dividerText}>OR</Text>
+                            <View style={styles.divider} />
+                        </View>
+
+                        {/* ── Google sign-in ── */}
+                        <Pressable
+                            style={[styles.googleButton, (isLoading || isGoogleLoading) && styles.googleButtonDisabled]}
+                            onPress={handleGoogleSignIn}
+                            disabled={isLoading || isGoogleLoading}
+                        >
+                            {isGoogleLoading ? (
+                                <ActivityIndicator color="#000" size="small" />
+                            ) : (
+                                <>
+                                    <Image
+                                        source={{ uri: 'https://www.google.com/images/branding/googleg/1x/googleg_standard_color_128dp.png' }}
+                                        style={styles.googleIcon}
+                                    />
+                                    <Text style={styles.googleButtonText}>Continue with Google</Text>
+                                </>
+                            )}
+                        </Pressable>
+
+                        {/* ── Already have account ── */}
+                        <Pressable
+                            style={styles.loginLink}
+                            onPress={() => router.replace('/UserLogin')}
+                            disabled={isLoading}
+                        >
+                            <Text style={styles.loginLinkText}>Already have an account? Sign In</Text>
+                        </Pressable>
+
+                    </ScrollView>
+                </KeyboardAvoidingView>
             </SafeAreaView>
         </View>
     );
 };
 
+// ── Styles ────────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
-    headerToggleLang: {
-        flexDirection: "row",
-        justifyContent: "flex-end",
-        alignItems: "center",
-        marginTop: 10,
-        marginBottom: 20
+    mainContainer: { flex: 1 },
+    safeArea:      { flex: 1, zIndex: 1 },
+    scrollContent: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 100 },
+
+    backBtn:  { marginBottom: 16 },
+    title:    { fontSize: 28, fontWeight: '900', color: '#fff', letterSpacing: 1, marginBottom: 4 },
+    subtitle: { fontSize: 14, color: 'rgba(255,255,255,0.7)', marginBottom: 28 },
+
+    // Fields
+    fieldLabel: {
+        color: 'rgba(255,255,255,0.85)', fontSize: 13, fontWeight: '700',
+        marginBottom: 6, marginTop: 14, letterSpacing: 0.3,
     },
-    langToggleContainer: {
-        width: 104,
-        height: 36,
-        borderRadius: 18,
-        backgroundColor: "#FFF",
-        overflow: "hidden",
-        padding: 3,
-        marginBottom: 20,
-    },
-    toggleBackground: {
-        flex: 1,
-        flexDirection: "row"
-    },
-    langButton: {
-        flex: 1,
-        justifyContent: "center",
-        alignItems: "center",
-        borderRadius: 15
-    },
-    langText: {
-        fontSize: 12,
-        fontWeight: "bold",
-        color: "#888"
-    },
-    activeToggleText: {
-        color: "#FFF"
-    },
-    inlineRoleToggle: {
-        alignSelf: "center",
-        width: 220,
-        height: 40,
-        borderRadius: 25,
-        backgroundColor: "#FFF",
-        overflow: "hidden",
-        padding: 2,
-        marginBottom: 30,
-        marginTop: 10,
-    },
-    toggleButton: {
-        flex: 1,
-        justifyContent: "center",
-        alignItems: "center",
-        borderRadius: 25
-    },
-    toggleText: {
-        fontSize: 14,
-        fontWeight: "bold",
-        color: "#888",
-        zIndex: 1
-    },
-    errorText: {
-        color: '#FF4B4B',
-        fontSize: 12,
-        marginTop: 5,
-        marginLeft: 20,
-        marginBottom: 10,
-        fontWeight: '600',
-    },
-    eyeIcon: {
-        fontSize: 22,
-        paddingHorizontal: 10,
-    },
-    signUpButton: {
-        marginTop: 30,
-        marginHorizontal: 20,
-        borderRadius: 30,
+    inputWrapper: {
+        flexDirection: 'row', alignItems: 'center',
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        borderRadius: 16, height: 56, paddingHorizontal: 16,
+        borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)',
         overflow: 'hidden',
-        elevation: 5,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 5,
     },
-    signUpButtonDisabled: {
-        opacity: 0.7,
+    inputIcon: { marginRight: 10 },
+    textInput: { flex: 1, color: '#fff', fontSize: 15 },
+    errorText: {
+        color: '#FFD700', fontSize: 12, marginLeft: 4,
+        marginTop: 4, fontWeight: '600',
     },
-    signUpGradient: {
-        paddingVertical: 16,
-        alignItems: 'center',
-        justifyContent: 'center',
+
+    // Submit button
+    submitBtn: {
+        backgroundColor: '#fff', borderRadius: 30, height: 60,
+        justifyContent: 'center', alignItems: 'center',
+        marginTop: 28, elevation: 5,
     },
-    signUpButtonText: {
-        color: '#FFF',
-        fontSize: 18,
-        fontWeight: 'bold',
-    },
-    loginLinkContainer: {
-        flexDirection: 'row',
-        justifyContent: 'center',
-        marginTop: 20,
-    },
-    loginLinkText: {
-        color: '#FFF',
-        fontSize: 14,
-    },
-    loginLink: {
-        color: '#00ADF5',
-        fontSize: 14,
-        fontWeight: 'bold',
-        textDecorationLine: 'underline',
-    },
-    comingSoonContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        paddingHorizontal: 40,
-    },
-    comingSoonTitle: {
-        fontSize: 28,
-        fontWeight: 'bold',
-        color: '#FFF',
-        marginBottom: 20,
-    },
-    comingSoonText: {
-        fontSize: 36,
-        fontWeight: 'bold',
-        color: '#00ADF5',
-        marginBottom: 10,
-    },
-    comingSoonSubtext: {
-        fontSize: 16,
-        color: 'rgba(255,255,255,0.8)',
-        textAlign: 'center',
-        lineHeight: 24,
-    },
-    dividerContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginVertical: 20,
-        marginHorizontal: 20,
-    },
-    divider: {
-        flex: 1,
-        height: 1,
-        backgroundColor: 'rgba(255, 255, 255, 0.3)',
-    },
-    dividerText: {
-        color: '#FFF',
-        paddingHorizontal: 15,
-        fontSize: 14,
-        fontWeight: 'bold',
-    },
+    submitBtnDisabled: { opacity: 0.7 },
+    submitBtnText: { color: '#004eba', fontSize: 17, fontWeight: '900', letterSpacing: 1 },
+
+    // Divider
+    dividerContainer: { flexDirection: 'row', alignItems: 'center', marginVertical: 20 },
+    divider:          { flex: 1, height: 1, backgroundColor: 'rgba(255,255,255,0.3)' },
+    dividerText:      { color: '#fff', paddingHorizontal: 15, fontSize: 14, fontWeight: 'bold' },
+
+    // Google button
     googleButton: {
-        marginHorizontal: 20,
-        backgroundColor: '#FFF',
-        borderRadius: 30,
-        height: 60,
-        flexDirection: 'row',
-        justifyContent: 'center',
-        alignItems: 'center',
-        elevation: 5,
-        marginBottom: 10,
+        backgroundColor: '#fff', borderRadius: 30, height: 60,
+        flexDirection: 'row', justifyContent: 'center', alignItems: 'center',
+        elevation: 5, marginBottom: 10,
     },
-    googleButtonDisabled: {
-        opacity: 0.7,
-    },
-    googleIcon: {
-        width: 24,
-        height: 24,
-        marginRight: 12,
-    },
-    googleButtonText: {
-        color: '#000',
-        fontSize: 16,
-        fontWeight: '600',
-    },
+    googleButtonDisabled: { opacity: 0.7 },
+    googleIcon:       { width: 24, height: 24, marginRight: 12 },
+    googleButtonText: { color: '#000', fontSize: 16, fontWeight: '600' },
+
+    // Login link
+    loginLink:     { alignSelf: 'center', padding: 12, marginTop: 4 },
+    loginLinkText: { color: 'rgba(255,255,255,0.8)', textDecorationLine: 'underline', fontSize: 14 },
 });
 
 export default UserSignUp;

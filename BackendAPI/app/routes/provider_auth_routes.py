@@ -25,7 +25,8 @@ async def provider_signup(
         category_id: str = Form(...),
         description: str = Form(...),
         latitude: Optional[float] = Form(None),
-        longitude: Optional[float] = Form(None)
+        longitude: Optional[float] = Form(None),
+        tags: List[str] = Form(default=[])
 ):
     """
     provider registration - step 1:  account creation
@@ -76,7 +77,8 @@ async def provider_signup(
         user_id=str(user.id),
         is_verified=False,
         business_documents=[],
-        portfolio_images=[]
+        portfolio_images=[],
+        tags=tags
     )
     await provider.insert()
 

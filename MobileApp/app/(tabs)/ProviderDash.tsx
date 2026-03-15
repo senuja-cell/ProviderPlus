@@ -19,7 +19,7 @@ import {
   DEFAULT_DASHBOARD_DATA,
   fetchAIOverview,
   fetchDashboardData,
-} from './services/dashboardService';
+} from '../services/dashboardService';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -298,7 +298,7 @@ const ProviderDashboard: React.FC<ProviderDashboardProps> = ({ navigation, route
           <View style={styles.topBar}>
             <View style={styles.logoContainer}>
               <Image
-                source={require('../assets/images/provider-logo.png')}
+                source={require('../../assets/images/provider-logo.png')}
                 style={styles.logo}
                 resizeMode="contain"
               />

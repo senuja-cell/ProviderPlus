@@ -2,11 +2,7 @@ from fastapi import APIRouter, HTTPException
 import stripe
 import os
 
-# ─────────────────────────────────────────────
-# STRIPE CONFIG
-# ⚠️  Move this to your .env / config file in production
-# e.g. use:  stripe.api_key = settings.STRIPE_SECRET_KEY
-# ─────────────────────────────────────────────
+
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 
 router = APIRouter()
@@ -28,9 +24,9 @@ async def create_payment_sheet():
         )
 
         # 3. Create the PaymentIntent
-        # LKR 2,500 → amount=250000 (Stripe uses smallest currency unit)
+        # LKR 500 → amount=50000 (Stripe uses smallest currency unit)
         payment_intent = stripe.PaymentIntent.create(
-            amount=250000,
+            amount=50000,
             currency="lkr",
             customer=customer["id"],
             automatic_payment_methods={"enabled": True},

@@ -4,7 +4,7 @@ from jose import JWTError, jwt
 from typing import List
 
 from ..core.websocket_manager import manager
-from ..services.messaging_service import MessagingService
+from ..services.messaging_service import MessagingService, create_booking
 from ..schemas.conversation_schemas import ConversationCreate, ConversationResponse
 from ..schemas.message_schemas import MessageCreate, MessageReadUpdate, PushTokenRegister
 from ..schemas.booking_schemas import BookingResponse, BookingCreate
@@ -259,7 +259,31 @@ async def store_booking_details(
         status=BookingStatus.pending
     )
 
+    await create_booking(booking)
+
     return BookingResponse(
         booking_id=str(booking.id),
         status=booking.status,
+    )
+
+
+@router.patch("/booking/{booking_id}/confirm")
+async def confirm_booking(
+        booking_id: str,
+        current_user: User = Depends(get_current_user)
+):
+    booking = await Booking.get(booking_id)
+
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+
+    if booking.user_id != str(current_user.id):
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    booking.status = BookingStatus.confirmed
+    await booking.save()
+
+    return BookingResponse(
+        booking_id=str(booking.id),
+        status=booking.status
     )

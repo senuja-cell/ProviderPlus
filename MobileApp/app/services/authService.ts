@@ -1,7 +1,6 @@
 import apiClient from "./apiClient";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-
 interface SignupData{
     email: string;
     password: string;
@@ -25,7 +24,6 @@ interface AuthResponse{
 
 const TOKEN_KEY  = 'auth_token';
 const USER_KEY = 'user_data';
-
 
 // THIS IS FOR SIGN UP
 export const signupUser = async(data: SignupData):  Promise<AuthResponse>  =>  {

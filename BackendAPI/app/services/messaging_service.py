@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import List
 from beanie import PydanticObjectId
 
+from ..models.booking_model import Booking
 from ..models.conversation_model import Conversation
 from ..models.message_model import Message
 from ..models.push_token_model import PushToken
@@ -175,3 +176,8 @@ class MessagingService:
             await new_token.insert()
 
         return True
+
+
+async def create_booking(booking: Booking) -> Booking:
+    await booking.insert()
+    return booking

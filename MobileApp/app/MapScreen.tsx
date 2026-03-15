@@ -6,11 +6,22 @@ import {
 import MapView, { Marker, PROVIDER_GOOGLE, Region, Polyline } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
+import {
+    findNearbySps,
+    getSpLiveLocation,
+    searchPlaces,
+    getPlaceDetails,
+    coordsFromGeoJson,
+    PlaceSuggestion,
+} from './services/geolocationService';
 
-const BACKEND_URL = 'http://192.168.8.168';
+// How often to refresh the SP marker while tracking
+const LIVE_LOCATION_POLL_MS = 10_000;
 
+// ─── TYPES ────────────────────────────────────────────────────────────────────
+// UserLocation is a local concern (react-native-maps shape).
+// ServiceProvider, GeoJsonPoint, PlaceSuggestion all come from geolocationService.
 interface UserLocation { latitude: number; longitude: number; }
-interface Prediction { place_id: string; description: string; }
 
 export default function MapScreen() {
     const mapRef = useRef<MapView>(null);
@@ -19,7 +30,7 @@ export default function MapScreen() {
 
     // Search & Address States
     const [searchQuery, setSearchQuery] = useState('');
-    const [predictions, setPredictions] = useState<Prediction[]>([]);
+    const [predictions, setPredictions] = useState<PlaceSuggestion[]>([]);
     const [searchLoading, setSearchLoading] = useState(false);
     const [address, setAddress] = useState<string>("Locating...");
 
@@ -27,16 +38,41 @@ export default function MapScreen() {
     const [pinnedLocation, setPinnedLocation] = useState<UserLocation | null>(null);
     const [providerLocation, setProviderLocation] = useState<UserLocation | null>(null);
     const [routeCoords, setRouteCoords] = useState<UserLocation[]>([]);
+    const [selectedSpId, setSelectedSpId] = useState<string | null>(null);
 
     // UI Modes
-    const [isTracking, setIsTracking] = useState(false); // Switches between Pinning and Tracking
+    const [isTracking, setIsTracking] = useState(false);
     const [eta, setEta] = useState<string>("");
     const [distance, setDistance] = useState<string>("");
+
+    // Debounce ref — prevents reverse-geocoding on every pixel of map pan
+    const fetchAddressTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     useEffect(() => {
         getUserLocation();
     }, []);
 
+    // Poll live SP location while tracking. Interval clears when tracking stops.
+    useEffect(() => {
+        if (!isTracking || !selectedSpId || !pinnedLocation) return;
+
+        const poll = async () => {
+            try {
+                const point = await getSpLiveLocation(selectedSpId);
+                const { latitude, longitude } = coordsFromGeoJson(point);
+                setProviderLocation({ latitude, longitude });
+                getDrivingRoute(latitude, longitude, pinnedLocation.latitude, pinnedLocation.longitude);
+            } catch (e) {
+                console.warn('Live location poll failed:', e);
+            }
+        };
+
+        poll();
+        const interval = setInterval(poll, LIVE_LOCATION_POLL_MS);
+        return () => clearInterval(interval);
+    }, [isTracking, selectedSpId]);
+
+    // ─── DEVICE LOCATION ──────────────────────────────────────────────────────
     const getUserLocation = async () => {
         let { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== 'granted') {
@@ -46,7 +82,6 @@ export default function MapScreen() {
         }
 
         try {
-            // Try Low accuracy first (fastest — WiFi/cell towers, avoids new arch hang)
             let location: Location.LocationObject;
             try {
                 location = await Location.getCurrentPositionAsync({
@@ -54,7 +89,6 @@ export default function MapScreen() {
                     mayShowUserSettingsDialog: false,
                 });
             } catch {
-                // Fallback to Lowest if Low fails
                 location = await Location.getCurrentPositionAsync({
                     accuracy: Location.Accuracy.Lowest,
                     mayShowUserSettingsDialog: false,
@@ -67,7 +101,6 @@ export default function MapScreen() {
             fetchAddress(latitude, longitude);
         } catch (error) {
             console.warn("⚠️ Could not get location:", error);
-            // Fall back to default coordinates (Colombo) if location completely fails
             setUserLocation({ latitude: 6.9271, longitude: 79.8612 });
             setPinnedLocation({ latitude: 6.9271, longitude: 79.8612 });
             setAddress("Location unavailable");
@@ -76,8 +109,11 @@ export default function MapScreen() {
         }
     };
 
+    // ─── REVERSE GEOCODE (Nominatim) ──────────────────────────────────────────
+    // Not in geolocationService — the backend doesn't expose a reverse-geocode
+    // endpoint, so this stays as a direct Nominatim call.
     const fetchAddress = async (lat: number, lng: number) => {
-        if (isTracking) return; // Don't fetch address if we are already tracking
+        if (isTracking) return;
         setAddress("Fetching address...");
         try {
             const response = await fetch(
@@ -85,45 +121,33 @@ export default function MapScreen() {
                 { headers: { 'User-Agent': 'ProviderPlusApp/1.0' } }
             );
             const text = await response.text();
-            if (text.startsWith('<')) {
-                setAddress("Location selected");
-                return;
-            }
+            if (text.startsWith('<')) { setAddress("Location selected"); return; }
             const data = JSON.parse(text);
-            const shortAddress = data.name || data.address?.road || data.display_name || "Unknown Location";
-            setAddress(shortAddress);
-        } catch (error) {
+            setAddress(data.name || data.address?.road || data.display_name || "Unknown Location");
+        } catch {
             setAddress("Location selected");
         }
     };
 
-    // Fetches Route, ETA, and Distance using OSRM (Free)
+    // ─── DRIVING ROUTE (OSRM) ─────────────────────────────────────────────────
+    // Not in geolocationService — Google Directions (via the backend) returns
+    // text steps, not the GeoJSON geometry that Polyline needs. OSRM gives us
+    // the polyline coordinates directly, so it stays as a direct call here.
     const getDrivingRoute = async (provLat: number, provLng: number, custLat: number, custLng: number) => {
         try {
             const url = `https://router.project-osrm.org/route/v1/driving/${provLng},${provLat};${custLng},${custLat}?overview=full&geometries=geojson`;
-            const response = await fetch(url);
-            const data = await response.json();
+            const data = await (await fetch(url)).json();
 
-            if (data.routes && data.routes.length > 0) {
+            if (data.routes?.length > 0) {
                 const routeInfo = data.routes[0];
 
-                // 1. Get Coordinates for the Polyline
-                const coords = routeInfo.geometry.coordinates;
-                const formattedCoords = coords.map((coord: [number, number]) => ({
-                    latitude: coord[1],
-                    longitude: coord[0]
-                }));
+                const formattedCoords = routeInfo.geometry.coordinates.map(
+                    (coord: [number, number]) => ({ latitude: coord[1], longitude: coord[0] })
+                );
                 setRouteCoords(formattedCoords);
+                setDistance(`${(routeInfo.distance / 1000).toFixed(1)} km`);
+                setEta(`${Math.round(routeInfo.duration / 60)} min`);
 
-                // 2. Get Distance (convert meters to km)
-                const distKm = (routeInfo.distance / 1000).toFixed(1);
-                setDistance(`${distKm} km`);
-
-                // 3. Get ETA (convert seconds to minutes)
-                const timeMins = Math.round(routeInfo.duration / 60);
-                setEta(`${timeMins} min`);
-
-                // 4. Zoom map to fit both provider and customer
                 mapRef.current?.fitToCoordinates(formattedCoords, {
                     edgePadding: { top: 150, right: 50, bottom: 50, left: 50 },
                     animated: true,
@@ -134,23 +158,14 @@ export default function MapScreen() {
         }
     };
 
+    // ─── SEARCH ───────────────────────────────────────────────────────────────
     const handleSearch = async (text: string) => {
         setSearchQuery(text);
         if (text.length < 3) { setPredictions([]); return; }
         setSearchLoading(true);
         try {
-            const response = await fetch(
-                `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(text + ", Sri Lanka")}&format=json&limit=5&countrycodes=lk`,
-                { headers: { 'User-Agent': 'ProviderPlusApp/1.0' } }
-            );
-            const data = await response.json();
-            const mappedSuggestions = data.map((item: any) => ({
-                place_id: item.place_id.toString(),
-                description: item.display_name,
-                lat: parseFloat(item.lat),
-                lng: parseFloat(item.lon)
-            }));
-            setPredictions(mappedSuggestions);
+            const suggestions = await searchPlaces(text);
+            setPredictions(suggestions);
         } catch (error) {
             console.error('Search error:', error);
         } finally {
@@ -158,28 +173,50 @@ export default function MapScreen() {
         }
     };
 
-    const handleSelectPlace = (placeId: string, description: string, lat: number, lng: number) => {
-        setSearchQuery(description);
+    // Google Places suggestions don't include coordinates — resolve them on selection.
+    const handleSelectPlace = async (item: PlaceSuggestion) => {
+        setSearchQuery(item.description);
         setPredictions([]);
-        mapRef.current?.animateToRegion({
-            latitude: lat, longitude: lng, latitudeDelta: 0.05, longitudeDelta: 0.05,
-        }, 1000);
-    };
-
-    const handleConfirmLocation = () => {
-        if (pinnedLocation) {
-            setIsTracking(true); // Switch UI to Tracking Mode
-
-            // SIMULATION: Create a fake provider 3km away to show your group
-            const fakeProviderLat = pinnedLocation.latitude + 0.025;
-            const fakeProviderLng = pinnedLocation.longitude + 0.025;
-            setProviderLocation({ latitude: fakeProviderLat, longitude: fakeProviderLng });
-
-            // Fetch the route line, distance, and ETA
-            getDrivingRoute(fakeProviderLat, fakeProviderLng, pinnedLocation.latitude, pinnedLocation.longitude);
+        try {
+            const { lat, lng } = await getPlaceDetails(item.place_id);
+            mapRef.current?.animateToRegion(
+                { latitude: lat, longitude: lng, latitudeDelta: 0.05, longitudeDelta: 0.05 },
+                1000
+            );
+        } catch (error) {
+            console.error('Place details error:', error);
         }
     };
 
+    // ─── CONFIRM BOOKING ──────────────────────────────────────────────────────
+    const handleConfirmLocation = async () => {
+        if (!pinnedLocation) return;
+
+        try {
+            const sps = await findNearbySps(pinnedLocation.latitude, pinnedLocation.longitude);
+
+            if (sps.length === 0) {
+                Alert.alert('No providers available', 'No service providers found near your location.');
+                return;
+            }
+
+            // Nearest SP is first — $nearSphere sorts by distance ascending
+            const nearest = sps[0];
+
+            // Prefer live_location if the SP is already moving, otherwise use registered location
+            const { latitude, longitude } = coordsFromGeoJson(nearest.live_location ?? nearest.location);
+
+            setSelectedSpId(nearest.sp_id);
+            setProviderLocation({ latitude, longitude });
+            setIsTracking(true);
+            getDrivingRoute(latitude, longitude, pinnedLocation.latitude, pinnedLocation.longitude);
+        } catch (error) {
+            console.error('Confirm location error:', error);
+            Alert.alert('Error', 'Could not find a service provider. Please try again.');
+        }
+    };
+
+    // ─── RENDER ───────────────────────────────────────────────────────────────
     if (loading) {
         return (
             <View style={styles.centered}>
@@ -191,7 +228,6 @@ export default function MapScreen() {
     return (
         <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
 
-            {/* UBER-STYLE ETA BANNER (Only shows when tracking) */}
             {isTracking && (
                 <View style={styles.etaBanner}>
                     <Text style={styles.etaTitle}>Provider is on the way!</Text>
@@ -215,29 +251,25 @@ export default function MapScreen() {
                     longitudeDelta: 0.0421,
                 }}
                 onRegionChangeComplete={(region: Region) => {
-                    if (!isTracking) {
+                    if (isTracking) return;
+                    if (fetchAddressTimeout.current) clearTimeout(fetchAddressTimeout.current);
+                    fetchAddressTimeout.current = setTimeout(() => {
                         setPinnedLocation({ latitude: region.latitude, longitude: region.longitude });
                         fetchAddress(region.latitude, region.longitude);
-                    }
+                    }, 600);
                 }}
             >
-                {/* 1. Customer Marker (Only shows AFTER confirming location) */}
                 {isTracking && pinnedLocation && (
                     <Marker coordinate={pinnedLocation} title="Your Location" pinColor="red" />
                 )}
-
-                {/* 2. Provider Marker */}
                 {isTracking && providerLocation && (
                     <Marker coordinate={providerLocation} title="Service Provider" pinColor="blue" />
                 )}
-
-                {/* 3. The Route Line */}
                 {isTracking && routeCoords.length > 0 && (
                     <Polyline coordinates={routeCoords} strokeWidth={4} strokeColor="#0072FF" />
                 )}
             </MapView>
 
-            {/* CENTER PIN (Only shows BEFORE confirming location) */}
             {!isTracking && (
                 <View style={styles.centerPinContainer} pointerEvents="none">
                     <Ionicons name="location" size={50} color="#0072FF" />
@@ -245,7 +277,6 @@ export default function MapScreen() {
                 </View>
             )}
 
-            {/* SEARCH BAR (Only shows BEFORE confirming location) */}
             {!isTracking && (
                 <View style={styles.searchContainer}>
                     <View style={styles.searchBar}>
@@ -273,7 +304,7 @@ export default function MapScreen() {
                             renderItem={({ item }) => (
                                 <TouchableOpacity
                                     style={styles.predictionItem}
-                                    onPress={() => handleSelectPlace(item.place_id, item.description, (item as any).lat, (item as any).lng)}
+                                    onPress={() => handleSelectPlace(item)}
                                 >
                                     <Text style={styles.predictionIcon}>📍</Text>
                                     <Text style={styles.predictionText} numberOfLines={2}>{item.description}</Text>
@@ -284,7 +315,6 @@ export default function MapScreen() {
                 </View>
             )}
 
-            {/* CONFIRM BUTTON (Only shows BEFORE confirming location) */}
             {!isTracking && (
                 <View style={styles.bottomBox}>
                     <View style={styles.addressContainer}>
@@ -304,8 +334,6 @@ const styles = StyleSheet.create({
     container: { flex: 1 },
     map: { width: '100%', height: '100%' },
     centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-
-    // Tracking UI Styles
     etaBanner: {
         position: 'absolute', top: 50, left: 20, right: 20, zIndex: 999,
         backgroundColor: 'white', padding: 20, borderRadius: 15,
@@ -316,8 +344,6 @@ const styles = StyleSheet.create({
     etaRow: { flexDirection: 'row', alignItems: 'baseline' },
     etaTime: { fontSize: 32, fontWeight: '900', color: '#0072FF', marginRight: 8 },
     etaDistance: { fontSize: 16, color: '#333', fontWeight: '600' },
-
-    // Existing Styles
     searchContainer: { position: 'absolute', top: 50, left: 15, right: 15, zIndex: 999 },
     searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'white', borderRadius: 25, paddingHorizontal: 15, paddingVertical: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 5, elevation: 5 },
     searchIcon: { fontSize: 16, marginRight: 8 },

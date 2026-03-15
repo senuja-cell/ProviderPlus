@@ -3,7 +3,8 @@ import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Alert, ActivityIn
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { StripeProvider, useStripe } from '@stripe/stripe-react-native';
-import paymentService from './services/paymentService';
+import { fetchPaymentSheetParams, confirmBooking } from './services/paymentService';
+import {router, useLocalSearchParams} from 'expo-router';
 
 // --- CONFIGURATION ---
 const STRIPE_PUBLISHABLE_KEY = "pk_test_51T4PfEQgnci2gla4O6VjuJUXyHQ2bz8DRGWOh4diuzSr9oYowUg8aGuMKcmUkop4kc3PooHdEZWmV2WRZG91evas00K2MEFZV2";
@@ -12,12 +13,19 @@ const PaymentScreenContent: React.FC = () => {
     const { initPaymentSheet, presentPaymentSheet } = useStripe();
     const [loading, setLoading] = useState<boolean>(false);
     const [isReady, setIsReady] = useState<boolean>(false);
+    const { bookingId, providerName, date, time, summary} = useLocalSearchParams<{
+        bookingId:    string;
+        providerName: string;
+        date:         string;
+        time:         string;
+        summary:      string;
+    }>();
 
     // 1. Initialize the Stripe Sheet using paymentService
     const initializePaymentSheet = async () => {
         setLoading(true);
         try {
-            const params = await paymentService.fetchPaymentSheetParams();
+            const params = await fetchPaymentSheetParams();
 
             const { error } = await initPaymentSheet({
                 merchantDisplayName: "Provider+ Ltd.",
@@ -63,8 +71,20 @@ const PaymentScreenContent: React.FC = () => {
         if (error) {
             Alert.alert(`Error: ${error.code}`, error.message);
         } else {
-            Alert.alert('Success', 'Payment confirmed! Provider+ service is booked.');
-            setIsReady(false);
+            try{
+                await confirmBooking(bookingId);
+                Alert.alert('Success', 'Payment confirmed! Provider+ service is booked.');
+                setIsReady(false);
+                // TODO: add the user dashboard page here after booking works
+                router.push('../(tabs)/index')
+            }
+            catch(e){
+                console.error('Failed to confirm booking: ', e)
+                Alert.alert(
+                    'Payment received but booking not confirmed',
+                    'Please contact support.'
+                )
+            }
         }
     };
 
@@ -81,7 +101,7 @@ const PaymentScreenContent: React.FC = () => {
 
                     <View style={styles.row}>
                         <Text style={styles.label}>TOTAL</Text>
-                        <Text style={styles.priceText}>LKR 2,500</Text>
+                        <Text style={styles.priceText}>LKR 500</Text>
                     </View>
                 </BlurView>
 
@@ -104,7 +124,7 @@ const PaymentScreenContent: React.FC = () => {
                     </LinearGradient>
                 </TouchableOpacity>
 
-                <Text style={styles.footerNote}>Providerplus Sri Lanka</Text>
+                <Text style={styles.footerNote}>ProviderPlus Sri Lanka</Text>
             </ScrollView>
         </LinearGradient>
     );

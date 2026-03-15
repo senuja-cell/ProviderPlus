@@ -8,9 +8,13 @@ export interface PaymentSheetParams {
 }
 
 // --- PAYMENT SERVICE ---
-const fetchPaymentSheetParams = async (): Promise<PaymentSheetParams> => {
+export const fetchPaymentSheetParams = async (): Promise<PaymentSheetParams> => {
     const response = await apiClient.post('/payment/payment-sheet');
     return response.data;
 };
 
-export default { fetchPaymentSheetParams };
+export const confirmBooking =  async (bookingId: string) => {
+    const response  = await apiClient.patch(`/messaging/booking/${bookingId}/confirm`)
+    return response.data;
+}
+
