@@ -54,7 +54,7 @@ export default function HomeScreen() {
   useAnimatedReaction(
       () => animatedIndex.value,
       (currentValue) => {
-        if (currentValue > 0.15) {
+        if (currentValue > 0.3) {
           runOnJS(setSheetExpanded)(true);
         } else {
           runOnJS(setSheetExpanded)(false);
@@ -64,20 +64,20 @@ export default function HomeScreen() {
   );
 
   const logoAnimatedStyle = useAnimatedStyle(() => {
-    const translateY = interpolate(animatedIndex.value, [0, 1], [0, -120], Extrapolation.CLAMP);
-    const translateX = interpolate(animatedIndex.value, [0, 1], [0, -width / 2 + 60], Extrapolation.CLAMP);
-    const scale = interpolate(animatedIndex.value, [0, 1], [1, 0.35], Extrapolation.CLAMP);
+    const translateY = interpolate(animatedIndex.value, [0.2, 1], [0, -120], Extrapolation.CLAMP);
+    const translateX = interpolate(animatedIndex.value, [0.2, 1], [0, -width / 2 + 60], Extrapolation.CLAMP);
+    const scale = interpolate(animatedIndex.value, [0.2, 1], [1, 0.35], Extrapolation.CLAMP);
     return { transform: [{ translateY }, { translateX }, { scale }] };
   });
 
   const searchBarAnimatedStyle = useAnimatedStyle(() => {
-    const translateY = interpolate(animatedIndex.value, [0, 1], [0, -120], Extrapolation.CLAMP);
-    const widthAnim = interpolate(animatedIndex.value, [0, 1], [width * 0.9, width * 0.95], Extrapolation.CLAMP);
+    const translateY = interpolate(animatedIndex.value, [0.2, 1], [0, -120], Extrapolation.CLAMP);
+    const widthAnim = interpolate(animatedIndex.value, [0.2, 1], [width * 0.9, width * 0.95], Extrapolation.CLAMP);
     return { width: widthAnim, transform: [{ translateY }] };
   });
 
   const fadeOutStyle = useAnimatedStyle(() => {
-    const opacity = interpolate(animatedIndex.value, [0, 0.2], [1, 0], Extrapolation.CLAMP);
+    const opacity = interpolate(animatedIndex.value, [0.2, 0.6], [1, 0], Extrapolation.CLAMP);
     return { opacity };
   });
 
