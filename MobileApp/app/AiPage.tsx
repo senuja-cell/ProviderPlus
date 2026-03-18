@@ -114,75 +114,79 @@ const App = () => {
         <LinearGradient colors={['#00ADF5', '#0072FF']} style={styles.container}>
             <StatusBar barStyle="light-content" />
             <SafeAreaView style={{ flex: 1 }}>
+                <KeyboardAvoidingView behavior ={Platform.OS === "ios" ? "padding" : "height"} style={{flex:1}}>
 
-                {/* --- HEADER --- */}
-                <View style={styles.header}>
-                    <BlurView intensity={30} tint="light" style={styles.headerContent}>
-                        <TouchableOpacity style={styles.iconPlaceholder}>
-                            <Image source={require('../assets/images/account.png')} style={styles.headerIcon} />
-                        </TouchableOpacity>
-                        <Text style={styles.headerTitle}>Servy</Text>
-                        <TouchableOpacity style={styles.iconPlaceholder}>
-                            <Image source={require('../assets/images/survy.png')} style={styles.headerIcon} />
-                        </TouchableOpacity>
-                    </BlurView>
-                </View>
+                    {/* --- HEADER --- */}
+                    <View style={styles.header}>
+                      <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+                        <Text style={styles.backArrow}>‹</Text>
+                      </TouchableOpacity>
+                      <Text style={styles.headerTitle}>Survy</Text>
+                      <View style={{ width: 38 }} />
+                      <Image
+                            source={require('../assets/images/survy.png')}
+                            style={{ width: 40, height: 40, tintColor: 'white' }}
+                            resizeMode="contain"
+                          />
+                    </View>
+                    <View style={styles.headerSeparator} />
 
-                {/* --- CHAT AREA --- */}
-                <FlatList
-                    ref={flatListRef}
-                    data={messages}
-                    keyExtractor={(item) => item.id}
-                    style={{ flex: 1 }}
-                    contentContainerStyle={styles.listContent}
-                    ListEmptyComponent={() => (
-                        <View style={styles.emptyContainer}>
-                            <Image source={require('../assets/images/provider-logo.png')} style={styles.largeLogo} />
-                            <Text style={styles.welcomeTitle}>Hello! Im Servy</Text>
-                            <Text style={styles.welcomeSub}>What service do you need today?</Text>
-                            <View style={styles.suggestionGrid}>
-                                {suggestions.map((item, index) => (
-                                    <TouchableOpacity
-                                        key={index}
-                                        style={styles.suggestionBtn}
-                                        onPress={() => handleSend(item)}
-                                        activeOpacity={0.7}
-                                    >
-                                        <Text style={styles.suggestionText}>{item}</Text>
-                                    </TouchableOpacity>
-                                ))}
+                    {/* --- CHAT AREA --- */}
+                    <FlatList
+                        ref={flatListRef}
+                        data={messages}
+                        keyExtractor={(item) => item.id}
+                        style={{ flex: 1 }}
+                        contentContainerStyle={styles.listContent}
+                        ListEmptyComponent={() => (
+                            <View style={styles.emptyContainer}>
+                                <Image source={require('../assets/images/provider-logo.png')} style={styles.largeLogo} />
+                                <Text style={styles.welcomeTitle}>Hello! Im Survy</Text>
+                                <Text style={styles.welcomeSub}>What service do you need today?</Text>
+                                <View style={styles.suggestionGrid}>
+                                    {suggestions.map((item, index) => (
+                                        <TouchableOpacity
+                                            key={index}
+                                            style={styles.suggestionBtn}
+                                            onPress={() => handleSend(item)}
+                                            activeOpacity={0.7}
+                                        >
+                                            <Text style={styles.suggestionText}>{item}</Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
                             </View>
-                        </View>
-                    )}
-                    renderItem={({ item, index }) => {
-                        if (item.type === 'typing') {
-                            return <TypingIndicator />;
-                        } else if (item.type === 'text') {
-                            return <AnimatedMessageBubble message={item} index={index} />;
-                        } else {
-                            return <AnimatedCardList data={item.data} router={router} />;
-                        }
-                    }}
-                />
+                        )}
+                        renderItem={({ item, index }) => {
+                            if (item.type === 'typing') {
+                                return <TypingIndicator />;
+                            } else if (item.type === 'text') {
+                                return <AnimatedMessageBubble message={item} index={index} />;
+                            } else {
+                                return <AnimatedCardList data={item.data} router={router} />;
+                            }
+                        }}
+                    />
 
-                {/* --- INPUT --- */}
-                <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.bottomWrapper}>
-                    <BlurView intensity={40} tint="light" style={styles.inputGlassContainer}>
-                        <TextInput
-                            placeholder="Ask From Servy..."
-                            placeholderTextColor="rgba(255,255,255,0.7)"
-                            style={styles.input}
-                            value={inputText}
-                            onChangeText={setInputText}
-                        />
-                        <TouchableOpacity
-                            style={styles.sendBtn}
-                            onPress={() => handleSend(inputText)}
-                            activeOpacity={0.7}
-                        >
-                            <Image source={require('../assets/images/f07bde08f3fa0fba4685ffa38ab849d5cba51896.png')} style={styles.sendIcon} />
-                        </TouchableOpacity>
-                    </BlurView>
+                    {/* --- INPUT --- */}
+                    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.bottomWrapper}>
+                        <BlurView intensity={40} tint="light" style={styles.inputGlassContainer}>
+                            <TextInput
+                                placeholder="Ask From Servy..."
+                                placeholderTextColor="rgba(255,255,255,0.7)"
+                                style={styles.input}
+                                value={inputText}
+                                onChangeText={setInputText}
+                            />
+                            <TouchableOpacity
+                                style={styles.sendBtn}
+                                onPress={() => handleSend(inputText)}
+                                activeOpacity={0.7}
+                            >
+                                <Image source={require('../assets/images/f07bde08f3fa0fba4685ffa38ab849d5cba51896.png')} style={styles.sendIcon} />
+                            </TouchableOpacity>
+                        </BlurView>
+                    </KeyboardAvoidingView>
                 </KeyboardAvoidingView>
 
             </SafeAreaView>
@@ -352,17 +356,45 @@ const AnimatedCard = ({ provider, index, router }: { provider: any; index: numbe
 
 const styles = StyleSheet.create({
     container: { flex: 1 },
-    header: { position: 'absolute', top: 0, width: '100%', paddingHorizontal: 20, paddingTop: 50, zIndex: 100 },
-    headerContent: { flexDirection: 'row', backgroundColor: 'rgba(255, 255, 255, 0.2)', paddingVertical: 12, paddingHorizontal: 15, borderRadius: 20, alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.3)' },
-    headerTitle: { color: 'white', fontSize: 22, fontWeight: 'bold' },
-    headerIcon: { width: 24, height: 24, tintColor: 'white' },
-    iconPlaceholder: { width: 24 },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 20,
+      paddingTop: Platform.OS === 'ios' ? 10 : 40,
+      paddingBottom: 12,
+    },
+    headerTitle: {
+      color: 'white',
+      fontSize: 28,
+      fontWeight: 'bold',
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      textAlign: 'center',
+      paddingTop:30,
+    },
+    headerSeparator: {
+      height: 1,
+      backgroundColor: 'rgba(255,255,255,0.3)',
+      marginHorizontal: 0,
+    },
+    backBtn: {
+      width: 38,
+      height: 38,
+      borderRadius: 19,
+      backgroundColor: 'rgba(255,255,255,0.22)',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 1,
+    },
+    backArrow: { color: 'white', fontSize: 30, fontWeight: '300', marginTop: -6 },
     listContent: { paddingTop: 120, paddingBottom: 100, flexGrow: 1 },
     botBubble: { backgroundColor: 'rgba(255, 255, 255, 0.15)', padding: 15, marginHorizontal: 20, marginVertical: 8, borderRadius: 20, borderBottomLeftRadius: 5, alignSelf: 'flex-start', maxWidth: '80%', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.2)' },
     userBubble: { backgroundColor: 'rgba(255, 255, 255, 0.3)', padding: 15, marginHorizontal: 20, marginVertical: 8, borderRadius: 20, borderBottomRightRadius: 5, alignSelf: 'flex-end', maxWidth: '80%', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.4)' },
     bubbleText: { color: 'white', fontSize: 15 },
     emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 30 },
-    largeLogo: { width: 100, height: 150, padding:50},
+    largeLogo: { width: 115, height: 150, padding:40},
     welcomeTitle: { color: 'white', fontSize: 26, fontWeight: '900' },
     welcomeSub: { color: 'rgba(255,255,255,0.8)', fontSize: 16, marginBottom: 30 },
     suggestionGrid: { width: '100%', flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center' },
@@ -377,8 +409,8 @@ const styles = StyleSheet.create({
     bookBtnContainer: { alignSelf: 'flex-end', marginTop: 10, borderRadius: 20, overflow: 'hidden' },
     bookBtnGradient: { paddingVertical: 8, paddingHorizontal: 20, borderRadius: 20 },
     bookText: { color: 'white', fontSize: 12, fontWeight: '700' },
-    bottomWrapper: { position: 'absolute', bottom: 0, width: '100%', padding: 20 },
-    inputGlassContainer: { flexDirection: 'row', height: 60, borderRadius: 30, paddingHorizontal: 20, alignItems: 'center', backgroundColor: 'rgba(255, 255, 255, 0.2)', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.3)', overflow: 'hidden' },
+    bottomWrapper: { position: 'absolute', bottom: 0, width: '100%', padding: 30 },
+    inputGlassContainer: { flexDirection: 'row', height: 60, borderRadius: 30, paddingHorizontal: 20, alignItems: 'center', backgroundColor: 'rgba(255, 255, 255, 0)', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.3)', overflow: 'hidden' },
     input: { flex: 1, color: 'white', fontSize: 16 },
     sendBtn: { width: 45, height: 45, borderRadius: 22.5, backgroundColor: 'rgba(255, 255, 255, 0.2)', justifyContent: 'center', alignItems: 'center', marginLeft: 10 },
     sendIcon: { width: 24, height: 24, tintColor: 'white' },

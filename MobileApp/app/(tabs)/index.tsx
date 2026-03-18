@@ -7,8 +7,8 @@ import {
   TextInput,
   TouchableOpacity,
   Dimensions,
-  Switch,
-  ActivityIndicator
+  ActivityIndicator,
+  Switch
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -20,66 +20,21 @@ import { fetchAllCategories } from '../services/categoryService';
 
 const { width, height } = Dimensions.get('window');
 
-const TRANSLATIONS = {
-  en: {
-    searchPlaceholder: 'Who Are You Looking For?',
-    searchYourself: 'SEARCH YOURSELF',
-    letUsPlan: 'LET US PLAN',
-    swipeUp: 'SWIPE UP FOR CATEGORIES',
-    categoriesTitle: 'SERVICE PROVIDER CATEGORIES',
-    categories: {
-      'DJ Artist': 'DJ Artist',
-      'Event Planner': 'Event Planner',
-      'Plumber': 'Plumber',
-      'Beautician': 'Beautician',
-      'Electrician': 'Electrician',
-      'Catering': 'Catering',
-      'Photography': 'Photography',
-      'LED Wall Provider': 'LED Wall Provider',
-      'Sound System': 'Sound System',
-      'Decoration': 'Decoration',
-      'Videography': 'Videography',
-      'Florist': 'Florist',
-      'Transportation': 'Transportation',
-    }
-  },
-  si: {
-    searchPlaceholder: 'ඔබ කාව සොයනවාද?',
-    searchYourself: 'ඔබම සොයන්න',
-    letUsPlan: 'අපි සැලසුම් කරමු',
-    swipeUp: 'කාණ්ඩ සඳහා ඉහළට ස්වයිප් කරන්න',
-    categoriesTitle: 'සේවා සපයන්නන්ගේ කාණ්ඩ',
-    categories: {
-      'DJ Artist': 'DJ කලාකරු',
-      'Event Planner': 'උත්සව සැලසුම්කරු',
-      'Plumber': 'ජලනල කාර්මිකයා',
-      'Beautician': 'රූපලාවන්‍ය ශිල්පියා',
-      'Electrician': 'විදුලි කාර්මිකයා',
-      'Catering': 'ආහාර සේවාව',
-      'Photography': 'ඡායාරූපකරණය',
-      'LED Wall Provider': 'LED තිර සපයන්නා',
-      'Sound System': 'ශබ්ද පද්ධතිය',
-      'Decoration': 'සැරසිලි',
-      'Videography': 'වීඩියෝ රූපකරණය',
-      'Florist': 'මල් අලෙවිකරු',
-      'Transportation': 'ප්‍රවාහනය',
-    }
-  }
-};
-
 export default function HomeScreen() {
   const router = useRouter();
-  const [isSinhala, setIsSinhala] = useState(false);
   const [isAiMode, setIsAiMode] = useState(false);
   const [sheetExpanded, setSheetExpanded] = useState(false);
   const [categories, setCategories] = useState<any[]>([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
 
-  const t = isSinhala ? TRANSLATIONS.si : TRANSLATIONS.en;
+  const [hasUnreadAlerts, setHasUnreadAlerts] = useState(true);
 
   const bottomSheetRef = useRef<BottomSheet>(null);
   const snapPoints = useMemo(() => ['12%', '75%'], []);
   const animatedIndex = useSharedValue(0);
+
+  const [isSinhala, setIsSinhala] = useState(false);
+  const toggleLanguage = () => setIsSinhala(prev => !prev);
 
   useEffect(() => {
     const loadCategories = async () => {
@@ -99,7 +54,7 @@ export default function HomeScreen() {
   useAnimatedReaction(
       () => animatedIndex.value,
       (currentValue) => {
-        if (currentValue > 0.15) {
+        if (currentValue > 0.3) {
           runOnJS(setSheetExpanded)(true);
         } else {
           runOnJS(setSheetExpanded)(false);
@@ -109,20 +64,20 @@ export default function HomeScreen() {
   );
 
   const logoAnimatedStyle = useAnimatedStyle(() => {
-    const translateY = interpolate(animatedIndex.value, [0, 1], [0, -120], Extrapolation.CLAMP);
-    const translateX = interpolate(animatedIndex.value, [0, 1], [0, -width / 2 + 60], Extrapolation.CLAMP);
-    const scale = interpolate(animatedIndex.value, [0, 1], [1, 0.35], Extrapolation.CLAMP);
+    const translateY = interpolate(animatedIndex.value, [0.2, 1], [0, -120], Extrapolation.CLAMP);
+    const translateX = interpolate(animatedIndex.value, [0.2, 1], [0, -width / 2 + 60], Extrapolation.CLAMP);
+    const scale = interpolate(animatedIndex.value, [0.2, 1], [1, 0.35], Extrapolation.CLAMP);
     return { transform: [{ translateY }, { translateX }, { scale }] };
   });
 
   const searchBarAnimatedStyle = useAnimatedStyle(() => {
-    const translateY = interpolate(animatedIndex.value, [0, 1], [0, -120], Extrapolation.CLAMP);
-    const widthAnim = interpolate(animatedIndex.value, [0, 1], [width * 0.9, width * 0.95], Extrapolation.CLAMP);
+    const translateY = interpolate(animatedIndex.value, [0.2, 1], [0, -120], Extrapolation.CLAMP);
+    const widthAnim = interpolate(animatedIndex.value, [0.2, 1], [width * 0.9, width * 0.95], Extrapolation.CLAMP);
     return { width: widthAnim, transform: [{ translateY }] };
   });
 
   const fadeOutStyle = useAnimatedStyle(() => {
-    const opacity = interpolate(animatedIndex.value, [0, 0.2], [1, 0], Extrapolation.CLAMP);
+    const opacity = interpolate(animatedIndex.value, [0.2, 0.6], [1, 0], Extrapolation.CLAMP);
     return { opacity };
   });
 
@@ -134,17 +89,31 @@ export default function HomeScreen() {
             {/* --- TOP BAR --- */}
             <View style={styles.topBar}>
               <View style={{ width: 50 }} />
-              <View style={styles.langContainer}>
-                <Text style={styles.langText}>ENG | සිං</Text>
-                <Switch
-                    trackColor={{ false: "#767577", true: "#E37322" }}
-                    thumbColor={"#f4f3f4"}
-                    onValueChange={() => setIsSinhala(!isSinhala)}
-                    value={isSinhala}
-                    style={{ transform: [{ scaleX: .7 }, { scaleY: .7 }] }}
-                />
-              </View>
+              <View style={styles.topBarRight}>
+
+              <View style={styles.languageToggle}>
+              <Text style={[styles.langLabel, !isSinhala && styles.langLabelActive]}>ENG</Text>
+              <Text style={styles.langDivider}>|</Text>
+              <Text style={[styles.langLabel, isSinhala && styles.langLabelActive]}>සිං</Text>
+              <Switch
+                value={isSinhala}
+                onValueChange={toggleLanguage}
+                trackColor={{ false: 'rgba(255,255,255,0.3)', true: '#FF6B35' }}
+                thumbColor={isSinhala ? '#fff' : '#f0f0f0'}
+                ios_backgroundColor="rgba(255,255,255,0.3)"
+                style={styles.switchStyle}
+              />
             </View>
+              <TouchableOpacity
+                style={styles.bellButton}
+                onPress={() => router.push('/Alerts')}
+              >
+                <Text style={styles.bellIcon}>🔔</Text>
+                {hasUnreadAlerts && <View style={styles.redDot}/>}
+              </TouchableOpacity>
+            </View>
+            </View>
+
 
             {/* --- MAIN CONTENT AREA --- */}
             <View style={styles.contentContainer}>
@@ -159,7 +128,7 @@ export default function HomeScreen() {
               <Animated.View style={[styles.searchWrapper, searchBarAnimatedStyle]}>
                 <View style={styles.searchBar}>
                   <TextInput
-                      placeholder={t.searchPlaceholder}
+                      placeholder={'Who Are You Looking For?'}
                       placeholderTextColor="rgba(255,255,255,0.7)"
                       style={styles.searchInput}
                   />
@@ -177,7 +146,7 @@ export default function HomeScreen() {
                       onPress={() => setIsAiMode(false)}
                   >
                     <Text style={[styles.toggleText, !isAiMode && styles.activeBlueText]}>
-                      {t.searchYourself}
+                      {'SEARCH YOURSELF'}
                     </Text>
                   </TouchableOpacity>
 
@@ -186,7 +155,7 @@ export default function HomeScreen() {
                       onPress={() => router.push('/AiPage')}
                   >
                     <Text style={[styles.toggleText, isAiMode && styles.activeWhiteText]}>
-                      {t.letUsPlan}
+                      {'LET US PLAN'}
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -199,7 +168,7 @@ export default function HomeScreen() {
                 pointerEvents={sheetExpanded ? 'none' : 'auto'}
             >
               <Text style={styles.arrowText}>^</Text>
-              <Text style={styles.swipeText}>{t.swipeUp}</Text>
+              <Text style={styles.swipeText}>{'SWIPE UP FOR CATEGORIES'}</Text>
             </Animated.View>
 
             {/* --- BOTTOM SHEET --- */}
@@ -218,7 +187,7 @@ export default function HomeScreen() {
                   contentContainerStyle={styles.sheetContent}
                   showsVerticalScrollIndicator={false}
               >
-                <Text style={styles.sheetTitle}>{t.categoriesTitle}</Text>
+                <Text style={styles.sheetTitle}>{'SERVICE PROVIDER CATEGORIES'}</Text>
 
                 {loadingCategories ? (
                     <ActivityIndicator size="large" color="#0072FF" style={{ marginTop: 20 }} />
@@ -241,7 +210,7 @@ export default function HomeScreen() {
                           >
                             <Text style={{ fontSize: 32 }}>{cat.icon}</Text>
                             <Text style={styles.cardText}>
-                              {t.categories[cat.name as keyof typeof t.categories] || cat.name}
+                              {cat.name}
                             </Text>
                           </TouchableOpacity>
                       ))}
@@ -268,8 +237,6 @@ const styles = StyleSheet.create({
     marginTop: 10,
     zIndex: 20,
   },
-  langContainer: { flexDirection: 'row', alignItems: 'center' },
-  langText: { color: 'white', fontWeight: '700', marginRight: 5 },
   contentContainer: { alignItems: 'center', marginTop: 60, zIndex: 10 },
   logoWrapper: {
     width: 100,
@@ -278,6 +245,58 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     zIndex: 30,
   },
+  topBarRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  languageToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  langLabel: {
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  langLabelActive: {
+    color: '#fff',
+  },
+  langDivider: {
+    color: 'rgba(255,255,255,0.4)',
+    marginHorizontal: 6,
+    fontSize: 12,
+  },
+  switchStyle: {
+    marginLeft: 6,
+    transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }],
+  },
+bellButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  bellIcon: {
+    fontSize: 18,
+  },
+  redDot: {
+      position: 'absolute',
+      top: 8,
+      right: 8,
+      width: 10,
+      height: 10,
+      borderRadius: 5,
+      backgroundColor: '#FF3B30',
+      borderWidth: 1.5,
+      borderColor: 'rgba(255,255,255,0.15)',
+    },
   logoImage: { width: '100%', height: '100%' },
   searchWrapper: { marginTop: 30 },
   searchBar: {

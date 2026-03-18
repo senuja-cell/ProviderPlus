@@ -11,7 +11,8 @@ import {
     ActivityIndicator,
     ScrollView,
     KeyboardAvoidingView,
-    Platform
+    Platform,
+    Switch
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -20,6 +21,7 @@ import { router } from 'expo-router';
 import { loginUser } from '../services/authService';
 import { configureGoogleSignIn, signInWithGoogle } from "../services/googleAuthService";
 import { useAuth } from '../context/AuthContext';
+
 
 type UserRole = 'customer' | 'provider';
 type Language = 'ENG' | 'සිං';
@@ -35,8 +37,8 @@ const UserLogin: React.FC = () => {
     const [password, setPassword] = useState<string>("");
     const [isPasswordVisible, setIsPasswordVisible] = useState<boolean>(false);
     const [userRole, setUserRole] = useState<UserRole>("customer");
-    const [language, setLanguage] = useState<Language>('ENG');
-    const [isTranslating, setIsTranslating] = useState<boolean>(false);
+    const [isSinhala, setIsSinhala] = useState(false);
+    const toggleLanguage = () => setIsSinhala(prev => !prev);
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [isGoogleLoading, setIsGoogleLoading] = useState<boolean>(false);
     const { setRole } = useAuth();
@@ -210,22 +212,22 @@ const UserLogin: React.FC = () => {
                 <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
                     <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
 
-                        {/* HEADER LANGUAGE TOGGLE */}
-                        <View style={styles.header}>
-                            <View style={styles.langToggleContainer}>
-                                <View style={styles.toggleBackground}>
-                                    <Pressable style={styles.langButton} onPress={() => setLanguage('ENG')}>
-                                        {language === 'ENG' && <LinearGradient colors={['#E440FF', '#5A1F63']} style={[StyleSheet.absoluteFill, { borderRadius: 15 }]} />}
-                                        <Text style={[styles.langText, language === 'ENG' && styles.activeToggleText]}>ENG</Text>
-                                    </Pressable>
-                                    <Pressable style={styles.langButton} onPress={() => setLanguage('සිං')}>
-                                        {language === 'සිං' && <LinearGradient colors={['#E440FF', '#5A1F63']} style={[StyleSheet.absoluteFill, { borderRadius: 15 }]} />}
-                                        <Text style={[styles.langText, language === 'සිං' && styles.activeToggleText]}>සිං</Text>
-                                    </Pressable>
-                                </View>
-                            </View>
-                            {isTranslating && <ActivityIndicator size="small" color="#FFF" style={{ marginLeft: 10 }} />}
-                        </View>
+                       {/* HEADER LANGUAGE TOGGLE */}
+                       <View style={styles.header}>
+                         <View style={styles.languageToggle}>
+                           <Text style={[styles.langLabel, !isSinhala && styles.langLabelActive]}>ENG</Text>
+                           <Text style={styles.langDivider}>|</Text>
+                           <Text style={[styles.langLabel, isSinhala && styles.langLabelActive]}>සිං</Text>
+                           <Switch
+                             value={isSinhala}
+                             onValueChange={toggleLanguage}
+                             trackColor={{ false: 'rgba(255,255,255,0.3)', true: '#FF6B35' }}
+                             thumbColor={isSinhala ? '#fff' : '#f0f0f0'}
+                             ios_backgroundColor="rgba(255,255,255,0.3)"
+                             style={styles.switchStyle}
+                           />
+                         </View>
+                       </View>
 
                         {/* LOGO */}
                         <View style={styles.logoContainer}>
@@ -368,24 +370,25 @@ const UserLogin: React.FC = () => {
 const styles = StyleSheet.create({
     mainContainer: { flex: 1 },
     safeArea: { flex: 1, zIndex: 1 },
-    scrollContent: { paddingHorizontal: 24, paddingBottom: 100, paddingTop: 10 },
-    header: { flexDirection: "row", justifyContent: "flex-start", alignItems: "center", marginTop: 10, marginBottom: 20 },
-    langToggleContainer: {
-        width: 104,
-        height: 36,
-        borderRadius: 18,
-        backgroundColor: "#FFF",
-        overflow: "hidden",
-        padding: 3,
-        marginBottom:30
-    },
+    scrollContent: { paddingHorizontal: 24, paddingBottom: 100, paddingTop: 5 },
+    header: { flexDirection: "row", justifyContent: "flex-end", alignItems: "center", marginTop: 20, marginBottom: 20 },
+   languageToggle: {
+     flexDirection: 'row',
+     alignItems: 'center',
+     backgroundColor: 'rgba(255,255,255,0.15)',
+     borderRadius: 20,
+     paddingHorizontal: 10,
+     paddingVertical: 4,
+   },
     toggleBackground: { flex: 1, flexDirection: "row" },
-    langButton: { flex: 1, justifyContent: "center", alignItems: "center", borderRadius: 15 },
-    langText: { fontSize: 12, fontWeight: "bold", color: "#888" },
+    langLabel:       { color: 'rgba(255,255,255,0.5)', fontWeight: '700', fontSize: 13, marginHorizontal: 3 },
+    langLabelActive: { color: 'white' },
+    langDivider:     { color: 'rgba(255,255,255,0.4)', marginHorizontal: 2 },
+    switchStyle:     { marginLeft: 6, transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] },
     activeToggleText: { color: "#FFF" },
-    logoContainer: { alignItems: "center", marginTop:20 },
+    logoContainer: { alignItems: "center", marginTop:5 },
     mainLogo: { width: 80, height: 80 },
-    welcomeText: { fontSize: 28, fontWeight: "900", color: "#FFF", letterSpacing: 2,margin:50 },
+    welcomeText: { fontSize: 28, fontWeight: "900", color: "#FFF", letterSpacing: 2,margin:25},
     formContainer: { width: "100%" },
     inlineRoleToggle: {
         alignSelf: "center",
@@ -395,7 +398,7 @@ const styles = StyleSheet.create({
         backgroundColor: "#FFF",
         overflow: "hidden",
         padding: 2,
-        marginBottom:50
+        marginBottom:20
     },
     toggleButton: { flex: 1, justifyContent: "center", alignItems: "center", borderRadius: 25},
     toggleText: { fontSize: 14, fontWeight: "bold", color: "#888", zIndex: 1 },
@@ -405,7 +408,7 @@ const styles = StyleSheet.create({
         backgroundColor: "rgba(255, 255, 255, 0.2)",
         borderRadius: 30,
         height: 60,
-        marginBottom: 5,
+        marginBottom: 3,
         paddingHorizontal: 20,
         borderWidth: 1,
         borderColor: "rgba(255, 255, 255, 0.3)",
@@ -413,7 +416,7 @@ const styles = StyleSheet.create({
     },
     textInput: { flex: 1, color: "#FFF", fontSize: 16 },
     inputIcon: { width: 22, height: 22, tintColor: "#FFF" },
-    forgotPassContainer: { alignSelf: "center", marginBottom: 25, marginTop: 10 },
+    forgotPassContainer: { alignSelf: "center", marginBottom: 25, marginTop: 5 },
     linkText: { color: "#FFF", textDecorationLine: "underline", fontSize: 14 },
     loginButton: {
         backgroundColor: "#FFF",
@@ -422,7 +425,7 @@ const styles = StyleSheet.create({
         justifyContent: "center",
         alignItems: "center",
         elevation: 5,
-        marginBottom: 20
+        marginBottom: 10
     },
     loginButtonDisabled: {
         opacity: 0.7,

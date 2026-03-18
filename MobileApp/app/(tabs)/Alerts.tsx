@@ -3,6 +3,10 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
+import {useRouter} from 'expo-router';
+import { Switch } from 'react-native';
+
+
 
 const { width } = Dimensions.get('window');
 
@@ -125,6 +129,9 @@ export default function Alerts() {
         return '#0072FF';
     }
   };
+const router = useRouter();
+const [isSinhala, setIsSinhala] = useState(false);
+const toggleLanguage = () => setIsSinhala(prev => !prev);
 
   return (
     <LinearGradient colors={['#00C6FF', '#0072FF']} style={styles.container}>
@@ -132,8 +139,34 @@ export default function Alerts() {
 
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Notifications</Text>
+          <View style={styles.headerTopRow}>
+            <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+              <Text style={styles.backArrow}>‹</Text>
+            </TouchableOpacity>
+
+            <Text style={styles.headerTitle}>Notifications</Text>
+
+            <View style={styles.languageToggle}>
+              <Text style={[styles.langLabel, !isSinhala && styles.langLabelActive]}>ENG</Text>
+              <Text style={styles.langDivider}>|</Text>
+              <Text style={[styles.langLabel, isSinhala && styles.langLabelActive]}>සිං</Text>
+              <Switch
+                value={isSinhala}
+                onValueChange={toggleLanguage}
+                trackColor={{ false: 'rgba(255,255,255,0.3)', true: '#FF6B35' }}
+                thumbColor={isSinhala ? '#fff' : '#f0f0f0'}
+                ios_backgroundColor="rgba(255,255,255,0.3)"
+                style={styles.switchStyle}
+              />
+            </View>
+          </View>
+
+          {/* Separator */}
+          <View style={styles.separator} />
+
+          {/* Mark all read — below separator */}
           <TouchableOpacity
+            style={styles.markAllReadBtn}
             onPress={() => setNotifications(prev => prev.map(n => ({ ...n, read: true })))}
           >
             <Text style={styles.markAllRead}>Mark all read</Text>
@@ -213,24 +246,63 @@ const styles = StyleSheet.create({
 
   // Header
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 15,
+    paddingTop: 14,
+    paddingBottom: 10,
+  },
+  headerTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 14,
   },
   headerTitle: {
-    fontSize: 32,
+    fontSize: 25,
     fontWeight: '800',
     color: 'white',
+    position: 'absolute',
+    left: 0,
+    right: 100,
+    textAlign: 'center',
+  },
+  separator: {
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.35)',
+    marginBottom: 10,
+  },
+  markAllReadBtn: {
+    alignItems: 'center',
+    paddingVertical: 6,
   },
   markAllRead: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: 'white',
-    opacity: 0.9,
+    opacity: 0.85,
   },
+  backBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(255,255,255,0.22)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1,
+  },
+  backArrow: { color: 'white', fontSize: 30, fontWeight: '300', marginTop: -6 },
+  languageToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    zIndex: 1,
+  },
+  langLabel:       { color: 'rgba(255,255,255,0.5)', fontWeight: '700', fontSize: 13, marginHorizontal: 3 },
+  langLabelActive: { color: 'white' },
+  langDivider:     { color: 'rgba(255,255,255,0.4)', marginHorizontal: 2 },
+  switchStyle:     { marginLeft: 6, transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] },
 
   // Scroll View
   scrollView: {
