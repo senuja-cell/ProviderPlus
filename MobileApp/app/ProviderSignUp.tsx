@@ -14,10 +14,9 @@ import { LOCATION_PICKER_RESULT_KEY } from './LocationPicker';
 import * as ImagePicker from 'expo-image-picker';
 import { signupProvider, uploadProfileImage } from './services/providerAuthService';
 import { fetchAllCategories, Category } from './services/categoryService';
-
+import { useLanguage } from './context/LanguageContext'; // ✅ ADDED
 
 const ProviderSignUp: React.FC = () => {
-    // Form fields
     const [name, setName]               = useState('');
     const [email, setEmail]             = useState('');
     const [phone, setPhone]             = useState('');
@@ -26,50 +25,40 @@ const ProviderSignUp: React.FC = () => {
     const [description, setDescription] = useState('');
     const [categoryId, setCategoryId]   = useState('');
 
-    // Location (set by map picker)
     const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
     const [locationAddress, setLocationAddress] = useState<string>('');
-
-    // Specialization tags — start with 2 empty slots
     const [tags, setTags] = useState<string[]>(['', '']);
-
-    // Optional profile image chosen at signup
     const [profileImageUri, setProfileImageUri] = useState<string | null>(null);
 
-    // UI state
-    const [showPassword, setShowPassword]       = useState(false);
-    const [showConfirmPass, setShowConfirmPass] = useState(false);
+    const [showPassword, setShowPassword]         = useState(false);
+    const [showConfirmPass, setShowConfirmPass]   = useState(false);
     const [showCategoryList, setShowCategoryList] = useState(false);
-    const [categories, setCategories]           = useState<Category[]>([]);
+    const [categories, setCategories]             = useState<Category[]>([]);
     const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
-    const [isLoading, setIsLoading]             = useState(false);
-    const [loadingCats, setLoadingCats]         = useState(true);
-
-    // Field errors
+    const [isLoading, setIsLoading]               = useState(false);
+    const [loadingCats, setLoadingCats]           = useState(true);
     const [errors, setErrors] = useState<Record<string, string>>({});
 
-    // ── Read location result when returning from LocationPicker ─────────────────
+    // ✅ ADDED — get from context
+    const { t } = useLanguage();
+
     useFocusEffect(
         useCallback(() => {
             (async () => {
                 const raw = await AsyncStorage.getItem(LOCATION_PICKER_RESULT_KEY);
                 if (raw) {
                     const parsed = JSON.parse(raw) as {
-                        latitude: number;
-                        longitude: number;
-                        address: string;
+                        latitude: number; longitude: number; address: string;
                     };
                     setLocation({ latitude: parsed.latitude, longitude: parsed.longitude });
                     setLocationAddress(parsed.address);
                     setErrors(e => ({ ...e, location: '' }));
-                    // Clear so it doesn't re-trigger on subsequent focuses
                     await AsyncStorage.removeItem(LOCATION_PICKER_RESULT_KEY);
                 }
             })();
         }, [])
     );
 
-    // ── Load categories on mount ───────────────────────────────────────────────
     useEffect(() => {
         fetchAllCategories()
             .then(setCategories)
@@ -77,7 +66,6 @@ const ProviderSignUp: React.FC = () => {
             .finally(() => setLoadingCats(false));
     }, []);
 
-    // ── Image picker ───────────────────────────────────────────────────────────
     const pickImage = async () => {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (status !== 'granted') {
@@ -90,41 +78,35 @@ const ProviderSignUp: React.FC = () => {
             aspect: [1, 1],
             quality: 0.8,
         });
-        if (!result.canceled) {
-            setProfileImageUri(result.assets[0].uri);
-        }
+        if (!result.canceled) setProfileImageUri(result.assets[0].uri);
     };
 
-    // ── Validation ─────────────────────────────────────────────────────────────
     const validate = (): boolean => {
         const newErrors: Record<string, string> = {};
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         const phoneRegex = /^\d{7,15}$/;
 
-        if (!name.trim())                         newErrors.name = 'Full name is required';
-        if (!email.trim())                        newErrors.email = 'Email is required';
-        else if (!emailRegex.test(email))         newErrors.email = 'Invalid email format';
-        if (!phone.trim())                        newErrors.phone = 'Phone number is required';
-        else if (!phoneRegex.test(phone.trim()))  newErrors.phone = 'Enter a valid phone number';
-        if (!password)                            newErrors.password = 'Password is required';
-        else if (password.length < 8)             newErrors.password = 'Minimum 8 characters';
-        if (confirmPass !== password)             newErrors.confirmPass = 'Passwords do not match';
-        if (!categoryId)                          newErrors.category = 'Please select a service category';
-        if (!description.trim())                  newErrors.description = 'Please add a short description';
-        else if (description.trim().length < 20)  newErrors.description = 'Description too short (min 20 characters)';
-        if (!location)                            newErrors.location = 'Please set your business location';
+        if (!name.trim())                        newErrors.name = 'Full name is required';
+        if (!email.trim())                       newErrors.email = 'Email is required';
+        else if (!emailRegex.test(email))        newErrors.email = 'Invalid email format';
+        if (!phone.trim())                       newErrors.phone = 'Phone number is required';
+        else if (!phoneRegex.test(phone.trim())) newErrors.phone = 'Enter a valid phone number';
+        if (!password)                           newErrors.password = 'Password is required';
+        else if (password.length < 8)            newErrors.password = 'Minimum 8 characters';
+        if (confirmPass !== password)            newErrors.confirmPass = 'Passwords do not match';
+        if (!categoryId)                         newErrors.category = 'Please select a service category';
+        if (!description.trim())                 newErrors.description = 'Please add a short description';
+        else if (description.trim().length < 20) newErrors.description = 'Description too short (min 20 characters)';
+        if (!location)                           newErrors.location = 'Please set your business location';
 
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
 
-    // ── Submit ─────────────────────────────────────────────────────────────────
     const handleSignUp = async () => {
         if (!validate()) return;
-
         setIsLoading(true);
         try {
-            // Build multipart form — matches backend Form(...) fields
             const fd = new FormData();
             fd.append('name', name.trim());
             fd.append('email', email.trim().toLowerCase());
@@ -133,21 +115,18 @@ const ProviderSignUp: React.FC = () => {
             fd.append('category_id', categoryId);
             fd.append('description', description.trim());
             if (location) {
-                fd.append('latitude',  String(location.latitude));
+                fd.append('latitude', String(location.latitude));
                 fd.append('longitude', String(location.longitude));
             }
-            // Filter out empty tag slots before sending
-            const filteredTags = tags.filter(t => t.trim().length > 0);
+            const filteredTags = tags.filter(tag => tag.trim().length > 0);
             filteredTags.forEach(tag => fd.append('tags', tag.trim()));
 
             const { access_token, provider_id } = await signupProvider(fd);
 
-            // If they chose a profile image, upload it now
             if (profileImageUri) {
                 try {
                     await uploadProfileImage(access_token, profileImageUri);
                 } catch {
-                    // Non-fatal — they can upload later from their profile
                     console.warn('Profile image upload failed — user can retry from profile');
                 }
             }
@@ -155,10 +134,7 @@ const ProviderSignUp: React.FC = () => {
             Alert.alert(
                 'Account Created!',
                 'Your provider account is set up. You can upload your business documents and portfolio from your profile to get verified.',
-                [{
-                    text: 'Go to Login',
-                    onPress: () => router.replace('/UserLogin'),
-                }]
+                [{ text: 'Go to Login', onPress: () => router.replace('/UserLogin') }]
             );
         } catch (error: any) {
             const msg = error?.response?.data?.detail ?? error.message ?? 'Registration failed. Please try again.';
@@ -168,11 +144,9 @@ const ProviderSignUp: React.FC = () => {
         }
     };
 
-    // ── Helpers ────────────────────────────────────────────────────────────────
     const err = (field: string) =>
         errors[field] ? <Text style={styles.errorText}>{errors[field]}</Text> : null;
 
-    // ── Render ─────────────────────────────────────────────────────────────────
     return (
         <View style={styles.mainContainer}>
             <StatusBar barStyle="light-content" />
@@ -181,7 +155,6 @@ const ProviderSignUp: React.FC = () => {
                 style={StyleSheet.absoluteFill}
                 start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
             />
-
             <SafeAreaView style={styles.safeArea}>
                 <KeyboardAvoidingView
                     behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -197,11 +170,11 @@ const ProviderSignUp: React.FC = () => {
                             <Ionicons name="arrow-back" size={22} color="#fff" />
                         </TouchableOpacity>
 
-                        {/* Title */}
-                        <Text style={styles.title}>Provider Sign Up</Text>
-                        <Text style={styles.subtitle}>Create your service provider account</Text>
+                        {/* ✅ Title */}
+                        <Text style={styles.title}>{t('Provider Sign Up')}</Text>
+                        <Text style={styles.subtitle}>{t('Create your service provider account')}</Text>
 
-                        {/* ── Profile image picker ── */}
+                        {/* Profile image picker */}
                         <View style={styles.avatarSection}>
                             <TouchableOpacity style={styles.avatarWrapper} onPress={pickImage}>
                                 {profileImageUri ? (
@@ -215,23 +188,24 @@ const ProviderSignUp: React.FC = () => {
                                     <Ionicons name="pencil" size={12} color="#fff" />
                                 </View>
                             </TouchableOpacity>
+                            {/* ✅ */}
                             <Text style={styles.avatarHint}>
-                                {profileImageUri ? 'Tap to change photo' : 'Add profile photo (optional)'}
+                                {profileImageUri ? t('Tap to change photo') : t('Add profile photo (optional)')}
                             </Text>
                             {profileImageUri && (
                                 <TouchableOpacity onPress={() => setProfileImageUri(null)}>
-                                    <Text style={styles.removePhotoText}>Remove</Text>
+                                    <Text style={styles.removePhotoText}>{t('Remove')}</Text>
                                 </TouchableOpacity>
                             )}
                         </View>
 
-                        {/* ── Full Name ── */}
-                        <Text style={styles.fieldLabel}>Full Name</Text>
+                        {/* Full Name */}
+                        <Text style={styles.fieldLabel}>{t('Full Name')}</Text>
                         <BlurView intensity={25} tint="light" style={styles.inputWrapper}>
                             <Ionicons name="person-outline" size={18} color="rgba(255,255,255,0.7)" style={styles.inputIcon} />
                             <TextInput
                                 style={styles.textInput}
-                                placeholder="Your full name"
+                                placeholder={t('Your full name')}
                                 placeholderTextColor="rgba(255,255,255,0.5)"
                                 value={name}
                                 onChangeText={setName}
@@ -241,8 +215,8 @@ const ProviderSignUp: React.FC = () => {
                         </BlurView>
                         {err('name')}
 
-                        {/* ── Email ── */}
-                        <Text style={styles.fieldLabel}>Email</Text>
+                        {/* Email */}
+                        <Text style={styles.fieldLabel}>{t('Email')}</Text>
                         <BlurView intensity={25} tint="light" style={styles.inputWrapper}>
                             <Ionicons name="mail-outline" size={18} color="rgba(255,255,255,0.7)" style={styles.inputIcon} />
                             <TextInput
@@ -258,8 +232,8 @@ const ProviderSignUp: React.FC = () => {
                         </BlurView>
                         {err('email')}
 
-                        {/* ── Phone ── */}
-                        <Text style={styles.fieldLabel}>Phone Number</Text>
+                        {/* Phone */}
+                        <Text style={styles.fieldLabel}>{t('Phone Number')}</Text>
                         <BlurView intensity={25} tint="light" style={styles.inputWrapper}>
                             <Ionicons name="call-outline" size={18} color="rgba(255,255,255,0.7)" style={styles.inputIcon} />
                             <TextInput
@@ -274,13 +248,13 @@ const ProviderSignUp: React.FC = () => {
                         </BlurView>
                         {err('phone')}
 
-                        {/* ── Password ── */}
-                        <Text style={styles.fieldLabel}>Password</Text>
+                        {/* Password */}
+                        <Text style={styles.fieldLabel}>{t('Password')}</Text>
                         <BlurView intensity={25} tint="light" style={styles.inputWrapper}>
                             <Ionicons name="lock-closed-outline" size={18} color="rgba(255,255,255,0.7)" style={styles.inputIcon} />
                             <TextInput
                                 style={styles.textInput}
-                                placeholder="Min. 8 characters"
+                                placeholder={t('Min. 8 characters')}
                                 placeholderTextColor="rgba(255,255,255,0.5)"
                                 secureTextEntry={!showPassword}
                                 value={password}
@@ -288,21 +262,18 @@ const ProviderSignUp: React.FC = () => {
                                 editable={!isLoading}
                             />
                             <Pressable onPress={() => setShowPassword(v => !v)}>
-                                <Ionicons
-                                    name={showPassword ? 'eye-outline' : 'eye-off-outline'}
-                                    size={20} color="rgba(255,255,255,0.7)"
-                                />
+                                <Ionicons name={showPassword ? 'eye-outline' : 'eye-off-outline'} size={20} color="rgba(255,255,255,0.7)" />
                             </Pressable>
                         </BlurView>
                         {err('password')}
 
-                        {/* ── Confirm Password ── */}
-                        <Text style={styles.fieldLabel}>Confirm Password</Text>
+                        {/* Confirm Password */}
+                        <Text style={styles.fieldLabel}>{t('Confirm Password')}</Text>
                         <BlurView intensity={25} tint="light" style={styles.inputWrapper}>
                             <Ionicons name="lock-closed-outline" size={18} color="rgba(255,255,255,0.7)" style={styles.inputIcon} />
                             <TextInput
                                 style={styles.textInput}
-                                placeholder="Repeat password"
+                                placeholder={t('Repeat password')}
                                 placeholderTextColor="rgba(255,255,255,0.5)"
                                 secureTextEntry={!showConfirmPass}
                                 value={confirmPass}
@@ -310,16 +281,13 @@ const ProviderSignUp: React.FC = () => {
                                 editable={!isLoading}
                             />
                             <Pressable onPress={() => setShowConfirmPass(v => !v)}>
-                                <Ionicons
-                                    name={showConfirmPass ? 'eye-outline' : 'eye-off-outline'}
-                                    size={20} color="rgba(255,255,255,0.7)"
-                                />
+                                <Ionicons name={showConfirmPass ? 'eye-outline' : 'eye-off-outline'} size={20} color="rgba(255,255,255,0.7)" />
                             </Pressable>
                         </BlurView>
                         {err('confirmPass')}
 
-                        {/* ── Service Category dropdown ── */}
-                        <Text style={styles.fieldLabel}>Service Category</Text>
+                        {/* Service Category */}
+                        <Text style={styles.fieldLabel}>{t('Service Category')}</Text>
                         <TouchableOpacity
                             style={styles.dropdownTrigger}
                             onPress={() => setShowCategoryList(v => !v)}
@@ -328,14 +296,11 @@ const ProviderSignUp: React.FC = () => {
                             <Ionicons name="briefcase-outline" size={18} color="rgba(255,255,255,0.7)" style={styles.inputIcon} />
                             <Text style={[styles.dropdownText, !selectedCategory && styles.dropdownPlaceholder]}>
                                 {loadingCats
-                                    ? 'Loading categories...'
-                                    : selectedCategory?.name ?? 'Select your service type'
+                                    ? t('Loading categories...')
+                                    : selectedCategory?.name ?? t('Select your service type')
                                 }
                             </Text>
-                            <Ionicons
-                                name={showCategoryList ? 'chevron-up' : 'chevron-down'}
-                                size={18} color="rgba(255,255,255,0.7)"
-                            />
+                            <Ionicons name={showCategoryList ? 'chevron-up' : 'chevron-down'} size={18} color="rgba(255,255,255,0.7)" />
                         </TouchableOpacity>
 
                         {showCategoryList && (
@@ -376,28 +341,30 @@ const ProviderSignUp: React.FC = () => {
                         )}
                         {err('category')}
 
-                        {/* ── Location ── */}
-                        <Text style={styles.fieldLabel}>Business Location <Text style={styles.required}>*</Text></Text>
+                        {/* Location */}
+                        <Text style={styles.fieldLabel}>
+                            {t('Business Location')} <Text style={styles.required}>*</Text>
+                        </Text>
                         <TouchableOpacity
                             style={[styles.dropdownTrigger, errors.location && styles.inputError]}
-                            onPress={() => {
-                                router.push('./LocationPicker');
-                            }}
+                            onPress={() => router.push('./LocationPicker')}
                             disabled={isLoading}
                         >
                             <Ionicons name="location-outline" size={18} color="rgba(255,255,255,0.7)" style={styles.inputIcon} />
                             <Text style={[styles.dropdownText, !location && styles.dropdownPlaceholder]} numberOfLines={1}>
                                 {location
                                     ? (locationAddress || `${location.latitude.toFixed(5)}, ${location.longitude.toFixed(5)}`)
-                                    : 'Tap to set your business location'
+                                    : t('Tap to set your business location')
                                 }
                             </Text>
                             <Ionicons name="map-outline" size={18} color="rgba(255,255,255,0.5)" />
                         </TouchableOpacity>
                         {err('location')}
 
-                        {/* ── Specializations / Tags ── */}
-                        <Text style={styles.fieldLabel}>Specializations <Text style={styles.optional}>(optional)</Text></Text>
+                        {/* Specializations */}
+                        <Text style={styles.fieldLabel}>
+                            {t('Specializations')} <Text style={styles.optional}>({t('optional')})</Text>
+                        </Text>
                         {tags.map((tag, index) => (
                             <View key={index} style={styles.tagRow}>
                                 <BlurView intensity={25} tint="light" style={[styles.inputWrapper, styles.tagInput]}>
@@ -430,16 +397,17 @@ const ProviderSignUp: React.FC = () => {
                                 disabled={isLoading}
                             >
                                 <Ionicons name="add-circle-outline" size={18} color="rgba(255,255,255,0.7)" />
-                                <Text style={styles.addTagText}>Add another specialization</Text>
+                                {/* ✅ */}
+                                <Text style={styles.addTagText}>{t('Add another specialization')}</Text>
                             </TouchableOpacity>
                         )}
 
-                        {/* ── Description ── */}
-                        <Text style={styles.fieldLabel}>About Your Service</Text>
+                        {/* Description */}
+                        <Text style={styles.fieldLabel}>{t('About Your Service')}</Text>
                         <BlurView intensity={25} tint="light" style={[styles.inputWrapper, styles.textAreaWrapper]}>
                             <TextInput
                                 style={[styles.textInput, styles.textArea]}
-                                placeholder="Briefly describe your expertise and the services you offer (min 20 characters)..."
+                                placeholder={t('Briefly describe your expertise and the services you offer (min 20 characters)...')}
                                 placeholderTextColor="rgba(255,255,255,0.5)"
                                 value={description}
                                 onChangeText={setDescription}
@@ -451,15 +419,16 @@ const ProviderSignUp: React.FC = () => {
                         </BlurView>
                         {err('description')}
 
-                        {/* ── Documents note ── */}
+                        {/* Info card */}
                         <View style={styles.infoCard}>
                             <Ionicons name="information-circle-outline" size={18} color="rgba(255,255,255,0.8)" />
+                            {/* ✅ */}
                             <Text style={styles.infoText}>
-                                Business documents (license, certifications) and portfolio images can be uploaded from your profile after you log in.
+                                {t('Business documents (license, certifications) and portfolio images can be uploaded from your profile after you log in.')}
                             </Text>
                         </View>
 
-                        {/* ── Sign Up button ── */}
+                        {/* Sign Up button */}
                         <Pressable
                             style={[styles.submitBtn, isLoading && styles.submitBtnDisabled]}
                             onPress={handleSignUp}
@@ -468,17 +437,19 @@ const ProviderSignUp: React.FC = () => {
                             {isLoading ? (
                                 <ActivityIndicator color="#000" size="small" />
                             ) : (
-                                <Text style={styles.submitBtnText}>CREATE ACCOUNT</Text>
+                                // ✅
+                                <Text style={styles.submitBtnText}>{t('CREATE ACCOUNT')}</Text>
                             )}
                         </Pressable>
 
-                        {/* ── Already have account ── */}
+                        {/* Already have account */}
                         <Pressable
                             style={styles.loginLink}
                             onPress={() => router.replace('/UserLogin')}
                             disabled={isLoading}
                         >
-                            <Text style={styles.loginLinkText}>Already have an account? Sign In</Text>
+                            {/* ✅ */}
+                            <Text style={styles.loginLinkText}>{t('Already have an account? Sign In')}</Text>
                         </Pressable>
 
                     </ScrollView>
@@ -488,18 +459,13 @@ const ProviderSignUp: React.FC = () => {
     );
 };
 
-// ── Styles ────────────────────────────────────────────────────────────────────
-
 const styles = StyleSheet.create({
     mainContainer: { flex: 1 },
     safeArea: { flex: 1, zIndex: 1 },
     scrollContent: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 100 },
-
     backBtn: { marginBottom: 16 },
     title: { fontSize: 28, fontWeight: '900', color: '#fff', letterSpacing: 1, marginBottom: 4 },
     subtitle: { fontSize: 14, color: 'rgba(255,255,255,0.7)', marginBottom: 28 },
-
-    // Profile photo
     avatarSection: { alignItems: 'center', marginBottom: 28 },
     avatarWrapper: { position: 'relative', marginBottom: 8 },
     avatar: { width: 100, height: 100, borderRadius: 20, borderWidth: 3, borderColor: 'rgba(255,255,255,0.4)' },
@@ -518,14 +484,11 @@ const styles = StyleSheet.create({
     },
     avatarHint: { color: 'rgba(255,255,255,0.7)', fontSize: 13 },
     removePhotoText: { color: '#FFD700', fontSize: 12, marginTop: 4, textDecorationLine: 'underline' },
-
-    // Fields
     fieldLabel: { color: 'rgba(255,255,255,0.85)', fontSize: 13, fontWeight: '700', marginBottom: 6, marginTop: 14, letterSpacing: 0.3 },
     inputWrapper: {
         flexDirection: 'row', alignItems: 'center',
         backgroundColor: 'rgba(255,255,255,0.2)',
-        borderRadius: 16, height: 56,
-        paddingHorizontal: 16,
+        borderRadius: 16, height: 56, paddingHorizontal: 16,
         borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)',
         overflow: 'hidden',
     },
@@ -534,8 +497,6 @@ const styles = StyleSheet.create({
     textInput: { flex: 1, color: '#fff', fontSize: 15 },
     textArea: { flex: 1, color: '#fff', fontSize: 15, textAlignVertical: 'top' },
     errorText: { color: '#FFD700', fontSize: 12, marginLeft: 4, marginTop: 4, fontWeight: '600' },
-
-    // Category dropdown
     dropdownTrigger: {
         flexDirection: 'row', alignItems: 'center',
         backgroundColor: 'rgba(255,255,255,0.2)',
@@ -544,10 +505,7 @@ const styles = StyleSheet.create({
     },
     dropdownText: { flex: 1, color: '#fff', fontSize: 15 },
     dropdownPlaceholder: { color: 'rgba(255,255,255,0.5)' },
-    dropdownList: {
-        borderRadius: 16, overflow: 'hidden',
-        marginTop: 4, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)',
-    },
+    dropdownList: { borderRadius: 16, overflow: 'hidden', marginTop: 4, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
     dropdownItem: {
         flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
         paddingHorizontal: 18, paddingVertical: 14,
@@ -556,8 +514,6 @@ const styles = StyleSheet.create({
     dropdownItemActive: { backgroundColor: 'rgba(255,255,255,0.15)' },
     dropdownItemText: { color: 'rgba(255,255,255,0.8)', fontSize: 15 },
     dropdownItemTextActive: { color: '#fff', fontWeight: '700' },
-
-    // Info card
     infoCard: {
         flexDirection: 'row', alignItems: 'flex-start', gap: 10,
         backgroundColor: 'rgba(255,255,255,0.1)',
@@ -565,8 +521,6 @@ const styles = StyleSheet.create({
         borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)',
     },
     infoText: { flex: 1, color: 'rgba(255,255,255,0.8)', fontSize: 13, lineHeight: 20 },
-
-    // Buttons
     submitBtn: {
         backgroundColor: '#fff', borderRadius: 30, height: 60,
         justifyContent: 'center', alignItems: 'center',
@@ -576,24 +530,13 @@ const styles = StyleSheet.create({
     submitBtnText: { color: '#022373', fontSize: 17, fontWeight: '900', letterSpacing: 1 },
     loginLink: { alignSelf: 'center', padding: 12, marginTop: 4 },
     loginLinkText: { color: 'rgba(255,255,255,0.8)', textDecorationLine: 'underline', fontSize: 14 },
-
-    // Dropdown scroll box
     dropdownScroll: { maxHeight: 220 },
-
-    // Location / input error highlight
     inputError: { borderColor: '#FFD700', borderWidth: 1.5 },
-
-    // Field label extras
     required: { color: '#FF6B6B', fontWeight: '900' },
     optional: { color: 'rgba(255,255,255,0.5)', fontWeight: '400', fontSize: 12 },
-
-    // Tags
-    tagRow:    { marginBottom: 8 },
-    tagInput:  { flex: 1 },
-    addTagBtn: {
-        flexDirection: 'row', alignItems: 'center', gap: 6,
-        paddingVertical: 10, paddingHorizontal: 4, marginTop: 2,
-    },
+    tagRow: { marginBottom: 8 },
+    tagInput: { flex: 1 },
+    addTagBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 10, paddingHorizontal: 4, marginTop: 2 },
     addTagText: { color: 'rgba(255,255,255,0.7)', fontSize: 13, fontWeight: '600' },
 });
 

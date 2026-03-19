@@ -329,7 +329,7 @@ const styles = StyleSheet.create({
     formContainer: { width: "100%" },
     inlineRoleToggle: {
         alignSelf: "center",
-        width: 180,
+        width: 190,
         height: 35,
         borderRadius: 25,
         backgroundColor: "#FFF",
@@ -338,7 +338,7 @@ const styles = StyleSheet.create({
         marginBottom: 20
     },
     toggleButton: { flex: 1, justifyContent: "center", alignItems: "center", borderRadius: 25 },
-    toggleText: { fontSize: 14, fontWeight: "bold", color: "#888", zIndex: 1 },
+    toggleText: { fontSize: 12, fontWeight: "bold", color: "#888", zIndex: 1 },
     inputWrapper: {
         flexDirection: "row",
         alignItems: "center",
