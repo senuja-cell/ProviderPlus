@@ -215,12 +215,25 @@ const Chat = () => {
         }
         setSubmitting(true);
         try {
+            // Read cached user location — won't prompt user again
+            let userLatitude: number | undefined;
+            let userLongitude: number | undefined;
+
+            const stored = await AsyncStorage.getItem('user_location');
+            if (stored) {
+                const parsed = JSON.parse(stored);
+                userLatitude  = parsed.latitude;
+                userLongitude = parsed.longitude;
+            }
+
             const result = await createBooking({
                 conversation_id: conversationId,
                 provider_id: providerId,
                 date: formatDateISO(selectedDate),
                 time: formatTimeISO(selectedTime),
                 summary: bookingSummary.trim(),
+                user_latitude: userLatitude,
+                user_longitude: userLongitude,
             });
 
             setModalVisible(false);

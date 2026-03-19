@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 from google import genai
 
 # 1. Load environment variables once
-
+load_dotenv()
 # 2. Fetch API Key
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 

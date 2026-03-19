@@ -9,6 +9,8 @@ class BookingCreate(BaseModel):
     date: str        # YYYY-MM-DD
     time: str        # HH:MM (24hr)
     summary: str
+    user_latitude: Optional[float] = None
+    user_longitude: Optional[float] = None
 
 class BookingResponse(BaseModel):
     """What we send back — the frontend uses booking_id + amount to navigate to payment."""

@@ -20,5 +20,8 @@ class Booking(Document):
     created_at: datetime = datetime.utcnow()
     status: BookingStatus = BookingStatus.pending
 
+    user_latitude: Optional[float] = None
+    user_longitude: Optional[float] = None
+
     class Settings:
         name = "bookings"

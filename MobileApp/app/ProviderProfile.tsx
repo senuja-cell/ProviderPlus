@@ -105,6 +105,7 @@ export default function ProviderProfile() {
         pathname: '/Chat',
         params: {
           conversationId,
+          providerId,
           providerName: provider.name,
           providerRole: provider.category.name,
         },

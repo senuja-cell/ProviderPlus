@@ -96,6 +96,8 @@ export interface BookingPayload {
     date: string;        // YYYY-MM-DD
     time: string;        // HH:MM (24hr)
     summary: string;
+    user_latitude?: number;
+    user_longitude?: number;
 }
 
 export interface BookingResponse {

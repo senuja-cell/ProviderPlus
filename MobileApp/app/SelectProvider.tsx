@@ -19,7 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Location from 'expo-location';
 import { fetchProvidersByCategory, Provider } from './services/providerService';
-import {provider} from "@expo/config-plugins/build/plugins/createBaseMod";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width } = Dimensions.get('window');
 
@@ -84,6 +84,10 @@ export default function ProviderMarketplace() {
     const [loading, setLoading] = useState(true);
     const [searchText, setSearchText] = useState("");
 
+    // Location state — tracks why location failed so we can show the right message
+    type LocationError = 'permission_denied' | 'gps_failed' | 'timeout' | null;
+    const [locationError, setLocationError] = useState<LocationError>(null);
+
     const getLocationWithFallback = (): Promise<Location.LocationObject> => {
         return new Promise(async (resolve, reject) => {
             const timeout = setTimeout(() => {
@@ -117,66 +121,70 @@ export default function ProviderMarketplace() {
     };
 
     const fetchProviders = async () => {
-
         setLoading(true);
-        let lat: number | undefined = undefined;
-        let long: number | undefined = undefined;
+        setLocationError(null);
 
-        try {
-            const enabled = await Location.hasServicesEnabledAsync();
-
-            if (enabled) {
-                let { status } = await Location.requestForegroundPermissionsAsync();
-
-                if (status === 'granted') {
-                    console.log("📡 Fetching location...");
-
-                    try {
-                        const location = await getLocationWithFallback();
-                        lat = location.coords.latitude;
-                        long = location.coords.longitude;
-                        console.log(`📍 Got location: ${lat}, ${long}`);
-
-                    } catch (locError) {
-                        console.warn("⚠️ GPS failed, trying last known:", locError);
-
-                        // Try last known — will only work if location was fetched before
-                        const lastKnown = await Location.getLastKnownPositionAsync({
-                            maxAge: 5 * 60 * 1000, // only use if less than 5 mins old
-                            requiredAccuracy: 100,  // within 100 meters
-                        });
-
-                        if (lastKnown) {
-                            lat = lastKnown.coords.latitude;
-                            long = lastKnown.coords.longitude;
-                            console.log(`📍 Using cached location: ${lat}, ${long}`);
-                        } else {
-                            console.log("📍 No location available, proceeding without it");
-                        }
-                    }
-                }
-            }
-        } catch (locationError) {
-            console.warn("⚠️ Location error:", locationError);
+        // ── Step 1: Check location services are on ──────────────────────────
+        const servicesEnabled = await Location.hasServicesEnabledAsync();
+        if (!servicesEnabled) {
+            // Device GPS is turned off entirely
+            setLocationError('gps_failed');
+            setLoading(false);
+            return;
         }
 
-        // ALWAYS call the API, even if location failed
+        // ── Step 2: Request permission ──────────────────────────────────────
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') {
+            setLocationError('permission_denied');
+            setLoading(false);
+            return;
+        }
+
+        // ── Step 3: Try to get coordinates ──────────────────────────────────
+        let latitude: number | undefined;
+        let longitude: number | undefined;
+
         try {
-            // Validate we have a categorySlug
-            if (!categorySlug) {
-                throw new Error("No category selected");
+            const location = await getLocationWithFallback();
+            latitude  = location.coords.latitude;
+            longitude = location.coords.longitude;
+        } catch {
+            // GPS fix failed — try last known position as fallback
+            console.warn('⚠️ GPS fix failed, trying last known...');
+            const lastKnown = await Location.getLastKnownPositionAsync({
+                maxAge:            10 * 60 * 1000, // no older than 10 minutes
+                requiredAccuracy:  500,             // within 500 metres
+            });
+
+            if (lastKnown) {
+                latitude  = lastKnown.coords.latitude;
+                longitude = lastKnown.coords.longitude;
+                console.log('📍 Using last known:', latitude, longitude);
             }
+        }
 
-            console.log(`📡 4. Calling API with category: "${categorySlug}", location: ${lat ? `${lat}, ${long}` : 'undefined (no location)'}`);
-            const data = await fetchProvidersByCategory(String(categorySlug), lat, long);
+        // ── Step 4: Block if we still have no coordinates ───────────────────
+        if (latitude === undefined || longitude === undefined) {
+            setLocationError('gps_failed');
+            setLoading(false);
+            return;
+        }
 
-            console.log(`✅ Success! Loaded ${data.length} providers.`);
+        // ── Step 5: Cache for booking screen (correct key names) ────────────
+        await AsyncStorage.setItem(
+            'user_location',
+            JSON.stringify({ latitude, longitude })
+        );
+
+        // ── Step 6: Fetch providers ─────────────────────────────────────────
+        try {
+            if (!categorySlug) throw new Error('No category selected');
+            const data = await fetchProvidersByCategory(String(categorySlug), latitude, longitude);
             setProviders(data);
-
         } catch (error: any) {
-            console.error("❌ Error fetching providers from API:", error);
-            const errorMessage = error.response?.data?.detail || error.message || "Could not connect to the server.";
-            Alert.alert("Error", errorMessage);
+            const msg = error.response?.data?.detail || error.message || 'Could not connect to the server.';
+            Alert.alert('Error', msg);
         } finally {
             setLoading(false);
         }
@@ -233,10 +241,27 @@ export default function ProviderMarketplace() {
 
                         </View>
                     }
-                    // LOADING STATE
                     ListEmptyComponent={
                         loading ? (
                             <ActivityIndicator size="large" color="#FFF" style={{ marginTop: 50 }} />
+                        ) : locationError ? (
+                            <View style={styles.locationErrorContainer}>
+                                <Ionicons name="location-outline" size={48} color="rgba(255,255,255,0.9)" />
+                                <Text style={styles.locationErrorTitle}>
+                                    {locationError === 'permission_denied'
+                                        ? 'Location Permission Required'
+                                        : 'Could Not Get Your Location'}
+                                </Text>
+                                <Text style={styles.locationErrorBody}>
+                                    {locationError === 'permission_denied'
+                                        ? 'We need your location to show nearby providers. Please enable location permission in your phone settings and try again.'
+                                        : 'Your GPS could not get a fix. Make sure you are outdoors or near a window, then try again.'}
+                                </Text>
+                                <TouchableOpacity style={styles.retryBtn} onPress={fetchProviders}>
+                                    <Ionicons name="refresh" size={16} color="#0072FF" />
+                                    <Text style={styles.retryBtnText}>Try Again</Text>
+                                </TouchableOpacity>
+                            </View>
                         ) : (
                             <Text style={styles.emptyText}>No providers found in this category.</Text>
                         )
@@ -334,4 +359,40 @@ const styles = StyleSheet.create({
         alignSelf: 'flex-end',
     },
     viewProfileText: { color: '#FFFFFF', fontSize: 12, fontWeight: 'bold' },
+
+    // Location error screen
+    locationErrorContainer: {
+        marginTop: 60,
+        marginHorizontal: 30,
+        alignItems: 'center',
+        gap: 12,
+    },
+    locationErrorTitle: {
+        fontSize: 20,
+        fontWeight: '800',
+        color: '#fff',
+        textAlign: 'center',
+        marginTop: 8,
+    },
+    locationErrorBody: {
+        fontSize: 14,
+        color: 'rgba(255,255,255,0.85)',
+        textAlign: 'center',
+        lineHeight: 22,
+    },
+    retryBtn: {
+        marginTop: 8,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        backgroundColor: '#fff',
+        paddingHorizontal: 24,
+        paddingVertical: 12,
+        borderRadius: 25,
+    },
+    retryBtnText: {
+        color: '#0072FF',
+        fontWeight: '700',
+        fontSize: 15,
+    },
 });

@@ -256,7 +256,9 @@ async def store_booking_details(
         date=data.date,
         time=data.time,
         summary=data.summary,
-        status=BookingStatus.pending
+        status=BookingStatus.pending,
+        user_latitude=data.user_latitude,
+        user_longitude=data.user_longitude
     )
 
     await create_booking(booking)

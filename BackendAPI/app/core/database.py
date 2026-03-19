@@ -16,7 +16,7 @@ from ..models.booking_model import Booking
 
 # function that connects the app with MongoDB
 async def init_db():
-
+    load_dotenv()
     # MongoDB URL
     uri = os.getenv("MONGO_URL")
 

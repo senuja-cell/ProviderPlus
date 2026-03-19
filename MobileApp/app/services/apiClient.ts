@@ -5,7 +5,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 // --- CONFIGURATION ---
 // 1. REPLACE THIS with the IP you found in Step 1
 // This is safe for dev because it's a local address.
-export const LAPTOP_IP = '192.168.1.6'; //
+export const LAPTOP_IP = '192.168.1.5'; //
 
 // 2. LOGIC:
 // - Android Emulator uses '10.0.2.2' (special alias for host loopback).
