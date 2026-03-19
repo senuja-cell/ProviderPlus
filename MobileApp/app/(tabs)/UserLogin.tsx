@@ -21,7 +21,7 @@ import { router } from 'expo-router';
 import { loginUser } from '../services/authService';
 import { configureGoogleSignIn, signInWithGoogle } from "../services/googleAuthService";
 import { useAuth } from '../context/AuthContext';
-import { useLanguage } from '../context/LanguageContext'; // ✅ ADDED
+import { useLanguage } from '../context/LanguageContext';
 
 type UserRole = 'customer' | 'provider';
 
@@ -31,28 +31,18 @@ const UserLogin: React.FC = () => {
         configureGoogleSignIn();
     }, []);
 
-    // --- STATE ---
     const [email, setEmail] = useState<string>("");
     const [password, setPassword] = useState<string>("");
     const [isPasswordVisible, setIsPasswordVisible] = useState<boolean>(false);
     const [userRole, setUserRole] = useState<UserRole>("customer");
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [isGoogleLoading, setIsGoogleLoading] = useState<boolean>(false);
-    const { setRole } = useAuth();
-
-    // ✅ REMOVED local isSinhala, toggleLanguage, strings state
-    // ✅ ADDED — get everything from context
-
-    const toggleLanguage = useCallback(async () => {
-      console.log('Toggle pressed, isSinhala will be:', !isSinhala);
-
-    const { isSinhala, toggleLanguage, t, isTranslating } = useLanguage();
-
-    // Error states
     const [emailError, setEmailError] = useState<string>("");
     const [passwordError, setPasswordError] = useState<string>("");
 
-    // handle google sign in
+    const { setRole } = useAuth();
+    const { isSinhala, toggleLanguage, t, isTranslating } = useLanguage();
+
     const handleGoogleSignIn = async (): Promise<void> => {
         setIsGoogleLoading(true);
         try {
@@ -75,7 +65,6 @@ const UserLogin: React.FC = () => {
         }
     };
 
-    // Email validation
     const validateEmail = (text: string) => {
         setEmail(text);
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -88,7 +77,6 @@ const UserLogin: React.FC = () => {
         }
     };
 
-    // Password validation
     const handlePasswordInput = (text: string) => {
         setPassword(text);
         if (text.length === 0) {
@@ -98,7 +86,6 @@ const UserLogin: React.FC = () => {
         }
     };
 
-    // Handle Login
     const handleLogin = async (): Promise<void> => {
         let hasError = false;
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -159,7 +146,6 @@ const UserLogin: React.FC = () => {
                 style={StyleSheet.absoluteFill}
                 start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
             />
-
             <SafeAreaView style={styles.safeArea}>
                 <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
                     <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -170,7 +156,6 @@ const UserLogin: React.FC = () => {
                                 <Text style={[styles.langLabel, !isSinhala && styles.langLabelActive]}>ENG</Text>
                                 <Text style={styles.langDivider}>|</Text>
                                 <Text style={[styles.langLabel, isSinhala && styles.langLabelActive]}>සිං</Text>
-                                {/* ✅ isTranslating spinner next to switch */}
                                 {isTranslating && (
                                     <ActivityIndicator size="small" color="#FFF" style={{ marginRight: 4 }} />
                                 )}
@@ -188,7 +173,6 @@ const UserLogin: React.FC = () => {
                         {/* LOGO */}
                         <View style={styles.logoContainer}>
                             <Image source={require('../../assets/images/provider-logo.png')} style={styles.mainLogo} resizeMode="contain" />
-                            {/* ✅ t() wraps the text */}
                             <Text style={styles.welcomeText}>{t('LOG IN')}</Text>
                         </View>
 
@@ -200,12 +184,10 @@ const UserLogin: React.FC = () => {
                                 <View style={styles.toggleBackground}>
                                     <Pressable style={styles.toggleButton} onPress={() => setUserRole('customer')}>
                                         {userRole === 'customer' && <LinearGradient colors={['#00ADF5', '#0072FF']} style={[StyleSheet.absoluteFill, { borderRadius: 25 }]} />}
-                                        {/* ✅ */}
                                         <Text style={[styles.toggleText, userRole === 'customer' && styles.activeToggleText]}>{t('Customer')}</Text>
                                     </Pressable>
                                     <Pressable style={styles.toggleButton} onPress={() => setUserRole('provider')}>
                                         {userRole === 'provider' && <LinearGradient colors={['#1086b5', '#022373']} style={[StyleSheet.absoluteFill, { borderRadius: 25 }]} />}
-                                        {/* ✅ */}
                                         <Text style={[styles.toggleText, userRole === 'provider' && styles.activeToggleText]}>{t('Provider')}</Text>
                                     </Pressable>
                                 </View>
@@ -216,7 +198,7 @@ const UserLogin: React.FC = () => {
                                 <BlurView intensity={25} tint="light" style={styles.inputWrapper}>
                                     <TextInput
                                         style={styles.textInput}
-                                        placeholder={t('Email')} // ✅
+                                        placeholder={t('Email')}
                                         placeholderTextColor="rgba(255,255,255,0.6)"
                                         value={email}
                                         onChangeText={validateEmail}
@@ -237,7 +219,7 @@ const UserLogin: React.FC = () => {
                                 <BlurView intensity={25} tint="light" style={styles.inputWrapper}>
                                     <TextInput
                                         style={styles.textInput}
-                                        placeholder={t('Password')} // ✅
+                                        placeholder={t('Password')}
                                         placeholderTextColor="rgba(255,255,255,0.6)"
                                         secureTextEntry={!isPasswordVisible}
                                         value={password}
@@ -264,7 +246,6 @@ const UserLogin: React.FC = () => {
                                 onPress={() => Alert.alert(t('Forgot Password?'), "Password reset feature coming soon!")}
                                 disabled={isLoading}
                             >
-                                {/* ✅ */}
                                 <Text style={styles.linkText}>{t('Forgot Password?')}</Text>
                             </Pressable>
 
@@ -277,7 +258,6 @@ const UserLogin: React.FC = () => {
                                 {isLoading ? (
                                     <ActivityIndicator color="#000" size="small" />
                                 ) : (
-                                    // ✅
                                     <Text style={styles.loginButtonText}>{t('SIGN IN')}</Text>
                                 )}
                             </Pressable>
@@ -303,7 +283,6 @@ const UserLogin: React.FC = () => {
                                             source={{ uri: "https://www.google.com/images/branding/googleg/1x/googleg_standard_color_128dp.png" }}
                                             style={styles.googleIcon}
                                         />
-                                        {/* ✅ */}
                                         <Text style={styles.googleButtonText}>{t('Continue with Google')}</Text>
                                     </>
                                 )}
@@ -315,7 +294,6 @@ const UserLogin: React.FC = () => {
                                 onPress={() => router.push(userRole === 'provider' ? '../ProviderSignUp' : '../UserSignUp')}
                                 disabled={isLoading}
                             >
-                                {/* ✅ */}
                                 <Text style={styles.signupText}>{t("Didn't sign up yet?")}</Text>
                             </Pressable>
                         </View>
