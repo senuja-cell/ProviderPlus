@@ -17,7 +17,7 @@ const ICON_MAP: Record<string, any> = {
   Survy:        require('../../assets/images/survy.png'),
   Orders:       require('../../assets/images/orders.png'),
   UserLogin:    require('../../assets/images/account.png'),
-  ProviderDash: require('../../assets/images/home.png'),
+  ProviderDash: require('../../assets/images/dashboard.png'),
   Chats:        require('../../assets/images/chats.png'),
   ProviderSchedule:     require('../../assets/images/schedule.png'),
 };
@@ -27,7 +27,7 @@ const LABEL_MAP: Record<string, string> = {
   Survy:        'SURVY',
   Orders:       'ORDERS',
   UserLogin:    'ACCOUNT',
-  ProviderDash: 'HOME',
+  ProviderDash: 'OVERVIEW',
   Chats:        'CHATS',
   ProviderSchedule:     'SCHEDULE',
 };
@@ -38,7 +38,7 @@ function AnimatedTabBar({ state, descriptors, navigation }: any) {
   const pathname = usePathname();
 
   const isHomePage = pathname === '/' || pathname === '/index';
-  const isDarkbgPage = pathname.includes('UserLogin') || pathname.includes('Orders') || pathname.includes('Alerts');
+  const isDarkbgPage = pathname.includes('UserLogin') || pathname.includes('Orders') || pathname.includes('Alerts') || pathname.includes('ProviderDash') || pathname.includes('ProviderSchedule') || pathname.includes('Chats');
 
   const activeTintColor = '#000000';
   const inactiveTintColor = isDarkbgPage ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)';

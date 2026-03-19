@@ -117,14 +117,14 @@ function OrdersScreen() {
   // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
-      <LinearGradient colors={['#00C6FF', '#0072FF']} style={styles.container}>
-        <SafeAreaView style={styles.safeArea}>
+    <LinearGradient colors={['#00D9FF', '#0056D2']} style={styles.container}>
+      <SafeAreaView style={styles.safeArea}>
 
-          {/* ── TOP BAR ── */}
-          <View style={styles.topBar}>
-            <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-              <Text style={styles.backArrow}>‹</Text>
-            </TouchableOpacity>
+        {/* ── TOP BAR ── */}
+        <View style={styles.topBar}>
+          <TouchableOpacity style={styles.backBtn} onPress={() => router.navigate('/(tabs)')}>
+            <Text style={styles.backArrow}>‹</Text>
+          </TouchableOpacity>
 
             <View style={styles.languageToggle}>
               <Text style={[styles.langLabel, !isSinhala && styles.langLabelActive]}>ENG</Text>
@@ -477,3 +477,4 @@ const styles = StyleSheet.create({
 });
 
 export default OrdersScreen;
+

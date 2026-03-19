@@ -244,7 +244,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
     zIndex: 20,
   },
-  contentContainer: { alignItems: 'center', marginTop: 60, zIndex: 10 },
+  contentContainer: { alignItems: 'center', marginTop: 60 },
   logoWrapper: {
     width: 100,
     height: 100,

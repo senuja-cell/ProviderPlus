@@ -215,7 +215,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  backArrow: { color: 'white', fontSize: 30, fontWeight: '300', marginTop: -2 },
+  backArrow: { color: 'white', fontSize: 30, fontWeight: '300', marginTop: -6 },
 
   // Language toggle
   languageToggle: {
