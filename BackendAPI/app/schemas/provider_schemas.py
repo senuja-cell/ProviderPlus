@@ -20,7 +20,7 @@ class ProviderSignupRequest(BaseModel):
 
 class ProviderProfileUpdate(BaseModel):
     """
-    Fields the provider can update from ProviderProfiledit.
+    Fields the provider can update from ProviderProfileEdit.
     All optional — only fields sent will be updated (PATCH behaviour).
     NIC and BR certificate are handled as file uploads, not text.
     """

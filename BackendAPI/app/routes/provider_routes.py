@@ -86,7 +86,7 @@ async def get_my_profile(
 ):
     """
     Returns the full profile of the logged-in provider.
-    Called by ProviderProfiledit on mount to pre-fill all fields.
+    Called by ProviderProfileEdit on mount to pre-fill all fields.
 
     Frontend: GET /api/provider/me/profile
     Headers:  Authorization: Bearer <token>

@@ -1,6 +1,6 @@
 /**
  * providerProfileService.ts
- * All API calls for the provider profile edit screen (ProviderProfiledit).
+ * All API calls for the provider profile edit screen (ProviderProfileEdit).
  *
  * provider_routes is registered under prefix: /api/category-search
  * So all profile endpoints are at: /api/category-search/provider/me/...
@@ -55,7 +55,7 @@ async function getAuthHeader(): Promise<{ Authorization: string }> {
 
 /**
  * Fetches the logged-in provider's full profile.
- * Called on ProviderProfiledit mount to pre-fill all fields.
+ * Called on ProviderProfileEdit mount to pre-fill all fields.
  *
  * Backend: GET /api/category-search/provider/me/profile
  */

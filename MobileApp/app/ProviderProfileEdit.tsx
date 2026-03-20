@@ -320,7 +320,7 @@ const WorkCard: React.FC<WorkCardProps> = ({ index, work, onChange, onRemove }) 
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
-export default function ProviderProfiledit(): React.JSX.Element {
+export default function ProviderProfileEdit(): React.JSX.Element {
   // ── Screen-level state ────────────────────────────────────────────────────
   const [isLoadingProfile, setIsLoadingProfile] = useState<boolean>(true);
   const [isSaving, setIsSaving]                 = useState<boolean>(false);
@@ -989,7 +989,7 @@ export default function ProviderProfiledit(): React.JSX.Element {
                 </View>
               ) : (
                 <TouchableOpacity style={styles.addSkillBtn} onPress={() => setShowSkillInput(true)}>
-                  <AntDesign name="pluscircleo" size={20} color={COLORS.accentLight} />
+                  <AntDesign name="plus-circle" size={20} color={COLORS.accentLight} />
                   <Text style={styles.addSkillBtnText}>Add Custom Skill</Text>
                 </TouchableOpacity>
               )}
@@ -1063,7 +1063,7 @@ export default function ProviderProfiledit(): React.JSX.Element {
 
             <TouchableOpacity style={styles.addWorkBtn} onPress={addWork} activeOpacity={0.8}>
               <Text style={styles.addWorkBtnText}>Add Another Works</Text>
-              <AntDesign name="pluscircleo" size={18} color={COLORS.accentLight} />
+              <AntDesign name="plus-circle" size={18} color={COLORS.accentLight} />
             </TouchableOpacity>
 
             <Text style={styles.orText}>Or</Text>

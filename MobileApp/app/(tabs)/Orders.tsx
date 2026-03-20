@@ -10,7 +10,7 @@ import { useRouter } from 'expo-router';
 import { useLanguage } from '../context/LanguageContext'; // ✅ ADDED
 import { Ionicons } from '@expo/vector-icons';
 import { fetchMyBookings, Booking } from '../services/ordersService';
-
+import { useRoleBack } from '../hooks/useBackNavigation';
 const { width } = Dimensions.get('window');
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -69,6 +69,7 @@ function ModalRow({ label, value, valueColor = '#1a1a1a' }: {
 // ─── Main Screen ──────────────────────────────────────────────────────
 function OrdersScreen() {
   const router = useRouter();
+  useRoleBack();
 
   // ✅ REMOVED local isSinhala, toggleLanguage
   // ✅ ADDED — get from context

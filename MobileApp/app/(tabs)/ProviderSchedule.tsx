@@ -8,6 +8,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { useRoleBack } from '../hooks/useBackNavigation';
 
 const { width, height } = Dimensions.get('window');
 
@@ -231,6 +232,7 @@ function SectionHeader({ title }: { title: string }) {
 
 // ─── Main Screen ──────────────────────────────────────────────────────
 export default function ProviderScheduleScreen() {
+  useRoleBack();
   const router = useRouter();
   const [isSinhala, setIsSinhala] = useState(false);
   const toggleLanguage = () => setIsSinhala(prev => !prev);

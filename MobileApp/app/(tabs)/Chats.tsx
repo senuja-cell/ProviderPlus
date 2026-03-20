@@ -6,7 +6,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-
+import { useRoleBack } from '../hooks/useBackNavigation';
 const { width } = Dimensions.get('window');
 
 // ─── Mock Data ────────────────────────────────────────────────────────
@@ -97,6 +97,7 @@ function Avatar({ name, size = 52 }: { name: string; size?: number }) {
 
 // ─── Main Screen ──────────────────────────────────────────────────────
 export default function ProviderChatsScreen() {
+  useRoleBack();
   const router = useRouter();
   const [isSinhala, setIsSinhala] = useState(false);
   const toggleLanguage = () => setIsSinhala(prev => !prev);

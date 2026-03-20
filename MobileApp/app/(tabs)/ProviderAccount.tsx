@@ -1,14 +1,3 @@
-/**
- * ProviderProfile.tsx
- * Provider+ App — Provider's Own Profile View
- *
- * Seen by: the logged-in provider
- * Sections: hero, stats, skills, work portfolio, reviews
- * Edit button navigates to ProviderProfiledit
- *
- * Place this file in your app/ folder (Expo Router)
- */
-
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
@@ -27,7 +16,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, Feather, MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-
+import { useRoleBack } from '../hooks/useBackNavigation';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -183,6 +172,7 @@ const SectionHeader: React.FC<{ title: string }> = ({ title }) => (
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function ProviderProfile(): React.JSX.Element {
+  useRoleBack();
   const [provider, setProvider]               = useState<ProviderData | null>(null);
   const [loading, setLoading]                 = useState<boolean>(true);
   const [showAllReviews, setShowAllReviews]   = useState<boolean>(false);
@@ -253,7 +243,7 @@ export default function ProviderProfile(): React.JSX.Element {
               <Ionicons name="chevron-back" size={22} color={COLORS.text} />
             </TouchableOpacity>
             <Image
-              source={require('../assets/images/provider-logo.png')}
+              source={require('../../assets/images/provider-logo.png')}
               style={styles.headerLogo}
               resizeMode="contain"
             />
@@ -294,7 +284,7 @@ export default function ProviderProfile(): React.JSX.Element {
             {/* Edit button — top right of card */}
             <TouchableOpacity
               style={styles.editBtn}
-              onPress={() => router.push('/ProviderProfiledit')}
+              onPress={() => router.push('../ProviderProfileEdit')}
               activeOpacity={0.85}
             >
               <Feather name="edit-2" size={14} color="#fff" />
@@ -447,7 +437,7 @@ export default function ProviderProfile(): React.JSX.Element {
           ) : (
             <TouchableOpacity
               style={styles.emptyPortfolioBtn}
-              onPress={() => router.push('/ProviderProfiledit')}
+              onPress={() => router.push('../ProviderProfiledit')}
             >
               <Feather name="plus-circle" size={22} color={COLORS.accentLight} />
               <Text style={styles.emptyPortfolioBtnText}>Add your first work</Text>

@@ -18,10 +18,12 @@ import Animated, { Extrapolation, interpolate, useAnimatedStyle, useSharedValue,
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { fetchAllCategories } from '../services/categoryService';
 import { useLanguage } from '../context/LanguageContext'; // ✅ ADDED
+import { useBlockBack } from '../hooks/useBlockBack';
 
 const { width, height } = Dimensions.get('window');
 
 export default function HomeScreen() {
+  useBlockBack();
   const router = useRouter();
   const [isAiMode, setIsAiMode] = useState(false);
   const [sheetExpanded, setSheetExpanded] = useState(false);

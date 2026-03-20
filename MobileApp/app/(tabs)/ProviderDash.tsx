@@ -24,7 +24,7 @@ import {
 import { useLanguage } from '../context/LanguageContext'; // ✅ ADDED
 import apiClient from "@/app/services/apiClient";
 import {useProviderLocationSender} from "@/app/hooks/useProviderLocationSender";
-
+import { useBlockBack } from '../hooks/useBlockBack';
 import{ useRouter} from 'expo-router';
 import { BlurView } from 'expo-blur';
 
@@ -236,8 +236,8 @@ const AIOverviewCard: React.FC<AIOverviewCardProps> = ({ overview, loading, erro
 // ─── Main Dashboard Screen ────────────────────────────────────
 
 const ProviderDashboard: React.FC<ProviderDashboardProps> = ({ navigation, route }) => {
-
-    const router = useRouter();
+  useBlockBack();
+  const router = useRouter();
 
   const providerName: string = route?.params?.providerName || 'Nimal Chandra';
   const providerId: string = route?.params?.providerId || 'provider_001';
@@ -330,7 +330,6 @@ const closeModal = () => setActiveModal(null);
     await Promise.all([loadAIOverview(), loadDashboardData()]);
     setRefreshing(false);
   };
-
   const greeting = getGreeting();
   const emoji = getGreetingEmoji();
 
