@@ -27,6 +27,10 @@ class ConversationResponse(BaseModel):
     last_message_at: Optional[datetime] = None
     last_message_preview: Optional[str] = None
 
+    customer_name: Optional[str] = None
+    unread_count: Optional[int] = 0
+
+
     @field_validator('id', mode='before')
     @classmethod
     def convert_id(cls, v):

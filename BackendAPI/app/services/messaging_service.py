@@ -42,23 +42,66 @@ class MessagingService:
 
 
 
-    async def get_user_conversations(self, user_id: str) -> List[Conversation]:
-        """
-        returns all conversations for  a user or provider
-        works for both sides - queries  where user_id OR  provider_id matches
-        sorted by most recent message first
-        """
+    async def get_user_conversations(self, user_id: str) -> list:
+        from ..models.user_model import User
+
+        # ── Get the provider profile ID if this user is a provider ──
+        user = await User.get(user_id)
+        provider_profile_id = user.provider_profile_id if user else None
+
+        print(f"[Chats] user_id={user_id}, provider_profile_id={provider_profile_id}")
+
+        # ── Build the query to match both user_id AND provider_profile_id ──
+        or_conditions = [
+            {"user_id": user_id},
+            {"provider_id": user_id},
+        ]
+
+        # If this user has a provider profile, also search by that ID
+        if provider_profile_id:
+            or_conditions.append({"provider_id": provider_profile_id})
 
         conversations = await Conversation.find(
-            {
-                "$or": [
-                    {"user_id": user_id},
-                    {"provider_id": user_id}
-                ]
-            }
+            {"$or": or_conditions}
         ).sort(-Conversation.last_message_at).to_list()
 
-        return conversations
+        result = []
+
+        for conv in conversations:
+            try:
+                customer = await User.get(conv.user_id)
+                customer_name = customer.full_name if customer else "Unknown Customer"
+            except Exception:
+                customer_name = "Unknown Customer"
+
+            unread_count = await Message.find(
+                Message.conversation_id == str(conv.id),
+                Message.recipient_id == user_id,
+                Message.read_at == None
+            ).count()
+
+            # Also count messages where recipient is provider_profile_id
+            if provider_profile_id:
+                extra_unread = await Message.find(
+                    Message.conversation_id == str(conv.id),
+                    Message.recipient_id == provider_profile_id,
+                    Message.read_at == None
+                ).count()
+                unread_count = max(unread_count, extra_unread)
+
+            result.append({
+                "id": str(conv.id),
+                "user_id": conv.user_id,
+                "provider_id": conv.provider_id,
+                "service_category": conv.service_category,
+                "created_at": conv.created_at,
+                "last_message_at": conv.last_message_at,
+                "last_message_preview": conv.last_message_preview,
+                "customer_name": customer_name,
+                "unread_count": unread_count,
+            })
+
+        return result
 
 
     # MESSAGES
@@ -145,13 +188,17 @@ class MessagingService:
         if not message:
             return False
 
-        if message.recipient_id != reader_id:
+        # Get the user's provider_profile_id if they have one
+        user = await User.get(reader_id)
+        provider_profile_id = user.provider_profile_id if user else None
+
+        # Accept if reader_id matches either user_id OR provider_profile_id
+        if message.recipient_id != reader_id and message.recipient_id != provider_profile_id:
             return False
 
         message.read_at = datetime.utcnow()
         await message.save()
         return True
-
 
 
     # PUSH TOKENS

@@ -34,9 +34,9 @@ const ROUTES = {
   // ✏️  Once you create UserAccount.tsx and ProviderAccount.tsx inside
   //     app/(tabs)/, update the tabFile and path values below.
   //     Until then they both fall back to UserLogin.
-  loginPage:       { tabFile: 'UserLogin',       path: '/(tabs)/UserLogin',       label: 'ACCOUNT',  icon: require('../../assets/images/account.png') },
-  userAccount:     { tabFile: 'UserLogin',       path: '/(tabs)/UserLogin',       label: 'ACCOUNT',  icon: require('../../assets/images/account.png') },
-  providerAccount: { tabFile: 'UserLogin', path: '/(tabs)/UserLogin',       label: 'ACCOUNT',  icon: require('../../assets/images/account.png') },
+  loginPage:       { tabFile: 'UserLogin',       path: 'UserLogin',       label: 'ACCOUNT',  icon: require('../../assets/images/account.png') },
+  userAccount:     { tabFile: 'UserLogin',       path: 'UserLogin',       label: 'ACCOUNT',  icon: require('../../assets/images/account.png') },
+  providerAccount: { tabFile: 'UserLogin', path: 'UserLogin',       label: 'ACCOUNT',  icon: require('../../assets/images/account.png') },
 } as const;
 
 // ─────────────────────────────────────────────────────────────────────

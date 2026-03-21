@@ -9,81 +9,11 @@ import { useRouter } from 'expo-router';
 import { useRoleBack } from '../hooks/useBackNavigation';
 const { width } = Dimensions.get('window');
 
-// ─── Mock Data ────────────────────────────────────────────────────────
-const MOCK_CHATS = [
-  {
-    id: '1',
-    customerName: 'Nimal Perera',
-    lastMessage: 'Hi! Nimal Are You Available Tomorrow At 4 PM?',
-    time: '2:45 PM',
-    unread: true,
-    unreadCount: 1,
-  },
-  {
-    id: '2',
-    customerName: 'Rodrigo Silva',
-    lastMessage: 'Can you come earlier? Around 10 AM?',
-    time: '1:30 PM',
-    unread: true,
-    unreadCount: 3,
-  },
-  {
-    id: '3',
-    customerName: 'Fernando Perera',
-    lastMessage: 'Thank you! The plumbing is working fine now.',
-    time: '11:00 AM',
-    unread: false,
-    unreadCount: 0,
-  },
-  {
-    id: '4',
-    customerName: 'Kasun Bandara',
-    lastMessage: 'Hi! Nimal Are You Available Tomorrow At 4 PM?',
-    time: 'Yesterday',
-    unread: true,
-    unreadCount: 2,
-  },
-  {
-    id: '5',
-    customerName: 'Saman Kumara',
-    lastMessage: 'Hi! Nimal Are You Available Tomorrow At 4 PM?',
-    time: 'Yesterday',
-    unread: false,
-    unreadCount: 0,
-  },
-  {
-    id: '6',
-    customerName: 'Priya Jayawardena',
-    lastMessage: 'Hi! Nimal Are You Available Tomorrow At 4 PM?',
-    time: 'Mon',
-    unread: true,
-    unreadCount: 1,
-  },
-  {
-    id: '7',
-    customerName: 'Amal Dissanayake',
-    lastMessage: 'Please confirm the booking.',
-    time: 'Mon',
-    unread: false,
-    unreadCount: 0,
-  },
-  {
-    id: '8',
-    customerName: 'Ruwan Jayasuriya',
-    lastMessage: 'Hi! Nimal Are You Available Tomorrow At 4 PM?',
-    time: 'Sun',
-    unread: false,
-    unreadCount: 0,
-  },
-{
-    id: '9',
-    customerName: 'Sandun Welivita',
-    lastMessage: 'Are You Available Tomorrow At 4 PM?',
-    time: 'Sun',
-    unread: false,
-    unreadCount: 0,
-  },
-];
+import{ fetchProviderConversations, ChatConversation } from '../services/messagingService';
+import {ActivityIndicator} from 'react-native';
+import {useEffect} from 'react';
+import { useFocusEffect } from 'expo-router';
+import { useCallback } from 'react';
 
 // ─── Avatar ───────────────────────────────────────────────────────────
 function Avatar({ name, size = 52 }: { name: string; size?: number }) {
@@ -101,16 +31,52 @@ export default function ProviderChatsScreen() {
   const router = useRouter();
   const [isSinhala, setIsSinhala] = useState(false);
   const toggleLanguage = () => setIsSinhala(prev => !prev);
-  const [chats, setChats] = useState(MOCK_CHATS);
+  const [chats, setChats] = useState<ChatConversation[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [manuallyRead, setManuallyRead] = useState<Set<string>>(new Set());
 
-  const handleChatPress = (chatId: string) => {
-    // Mark as read when tapped
-    setChats(prev =>
-      prev.map(c => c.id === chatId ? { ...c, unread: false, unreadCount: 0 } : c)
-    );
-    // ↓ Connect navigation yourself — pass chatId to your chat screen
-    router.push({ pathname: '/ChatRoom', params: { chatId } });
-  };
+ useEffect(() => {
+   const loadConversations = async () => {
+     try {
+       const data = await fetchProviderConversations();
+       setChats(data);
+     } catch (error) {
+       console.error('Failed to load Conversation:', error);
+     } finally {
+       setLoading(false);
+     }
+   };
+   loadConversations();
+ }, []);
+
+ // Poll silently in background — only updates if data changed
+ // Does NOT show loading spinner so screen feels instant
+ useEffect(() => {
+   const interval = setInterval(async () => {
+     try {
+       const data = await fetchProviderConversations();
+       setChats(prev => data.map((chat: ChatConversation) => {
+         // If provider manually opened this chat, keep it at 0
+         if (manuallyRead.has(chat.id)) {
+           return { ...chat, unread_count: 0 };
+         }
+         return chat;
+       }));
+     } catch (error) {
+       // silent fail
+     }
+   }, 5000);
+
+   return () => clearInterval(interval);
+ }, [manuallyRead]);
+
+const handleChatPress = (chatId: string, customerName: string) => {
+  setManuallyRead(prev => new Set([...prev, chatId]));
+  setChats(prev =>
+    prev.map(c => c.id === chatId ? { ...c, unread_count: 0 } : c)
+  );
+  router.push({ pathname: '/Chat', params: { conversationId: chatId, providerName: customerName } });
+};
 
   return (
     <LinearGradient colors={['#1086b5', '#022373']} style={styles.container}>
@@ -118,7 +84,7 @@ export default function ProviderChatsScreen() {
 
         {/* ── TOP BAR ── */}
         <View style={styles.topBar}>
-          <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+          <TouchableOpacity style={styles.backBtn} onPress={() => router.push('/ProviderDash')}>
             <Text style={styles.backArrow}>‹</Text>
           </TouchableOpacity>
 
@@ -148,44 +114,48 @@ export default function ProviderChatsScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scroll}
         >
-          {chats.map((chat) => (
-            <TouchableOpacity
-              key={chat.id}
-              style={[styles.chatCard, chat.unread && styles.chatCardUnread]}
-              activeOpacity={0.75}
-              onPress={() => handleChatPress(chat.id)}
-            >
-              {/* Avatar */}
-              <View style={styles.avatarWrapper}>
-                <Avatar name={chat.customerName} />
-              </View>
-
-              {/* Text content */}
-              <View style={styles.chatInfo}>
-                <View style={styles.chatTopRow}>
-                  <Text style={[styles.chatName, chat.unread && styles.chatNameUnread]}>
-                    {chat.customerName}
-                  </Text>
-                  <Text style={styles.chatTime}>{chat.time}</Text>
+          {loading ? (
+            <ActivityIndicator color="white" style={{ marginTop: 40 }} />
+          ) : (
+            chats.map((chat) => (
+              <TouchableOpacity
+                key={chat.id}
+                style={[styles.chatCard, chat.unread_count > 0 && styles.chatCardUnread]}
+                activeOpacity={0.75}
+                onPress={() => handleChatPress(chat.id, chat.customer_name ?? 'Unknown Customer')}
+              >
+                <View style={styles.avatarWrapper}>
+                  <Avatar name={chat.customer_name ?? 'Unknown'} />
                 </View>
-                <View style={styles.chatBottomRow}>
-                  <Text
-                    style={[styles.chatLastMsg, chat.unread && styles.chatLastMsgUnread]}
-                    numberOfLines={1}
-                  >
-                    {chat.lastMessage}
-                  </Text>
 
-                  {/* Unread dot */}
-                  {chat.unread && (
-                    <View style={styles.unreadBadge}>
-                      <Text style={styles.unreadBadgeText}>{chat.unreadCount}</Text>
-                    </View>
-                  )}
+                <View style={styles.chatInfo}>
+                  <View style={styles.chatTopRow}>
+                    <Text style={[styles.chatName, chat.unread_count > 0 && styles.chatNameUnread]}>
+                      {chat.customer_name ?? 'Unknown Customer'}
+                    </Text>
+                    <Text style={styles.chatTime}>
+                      {chat.last_message_at
+                        ? new Date(chat.last_message_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                        : ''}
+                    </Text>
+                  </View>
+                  <View style={styles.chatBottomRow}>
+                    <Text
+                      style={[styles.chatLastMsg, chat.unread_count > 0 && styles.chatLastMsgUnread]}
+                      numberOfLines={1}
+                    >
+                      {chat.last_message_preview ?? 'No messages yet'}
+                    </Text>
+                    {chat.unread_count > 0 && (
+                      <View style={styles.unreadBadge}>
+                        <Text style={styles.unreadBadgeText}>{chat.unread_count}</Text>
+                      </View>
+                    )}
+                  </View>
                 </View>
-              </View>
-            </TouchableOpacity>
-          ))}
+              </TouchableOpacity>
+            ))
+          )}
 
           <View style={{ height: 100 }} />
         </ScrollView>

@@ -145,7 +145,20 @@ async def get_message_history(
     Sorted oldest to newest so the UI renders naturally top to bottom.
     """
     messages = await service.get_messages(conversation_id)
-    return messages
+    # Serialize properly so id comes through as a string
+    return [
+        {
+            "id": str(msg.id),
+            "conversation_id": msg.conversation_id,
+            "sender_id": msg.sender_id,
+            "recipient_id": msg.recipient_id,
+            "content": msg.content,
+            "sent_at": msg.sent_at,
+            "delivered": msg.delivered,
+            "read_at": msg.read_at,
+        }
+        for msg in messages
+    ]
 
 
 @router.patch("/messages/read")
@@ -167,6 +180,7 @@ async def mark_message_as_read(
             detail="Message not found or you are not the recipient"
         )
     return {"message": "Message marked as read"}
+
 
 
 # ---------------------------------------------------------------------------

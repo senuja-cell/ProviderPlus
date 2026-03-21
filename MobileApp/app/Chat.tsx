@@ -114,11 +114,22 @@ const Chat = () => {
     }, []);
 
     const setupChat = async () => {
-        const userId = await AsyncStorage.getItem('user_id');
+        const userData = await AsyncStorage.getItem('user_data');
+        const userId = userData ? JSON.parse(userData).user_id : null;
         setCurrentUserId(userId);
         try {
             const history = await getMessageHistory(conversationId);
             setMessages(history);
+
+            console.log('[Chat] sample message ids:', history.slice(0,3).map((m: any) => m.id));
+//             console.log('[Chat] user_id:', userId);
+//             console.log('[Chat] first sender_id:', history[0]?.sender_id);
+//             console.log('[Chat] match:', userId === history[0]?.sender_id);
+
+            const unread = history.filter((m: Message) => !m.read_at && m.id && !m.id.startsWith('temp-'));
+                for (const msg of unread) {
+                  markMessageRead(msg.id).catch(() => {});
+                }
         } catch (e) {
             console.error('Failed to load message history:', e);
         } finally {
@@ -128,9 +139,9 @@ const Chat = () => {
             conversationId,
             (msg: Message) => {
                 setMessages(prev => [...prev, msg]);
-                markMessageRead(msg.id).catch(() => {});
-                setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 100);
-            },
+                       markMessageRead(msg.id).catch(() => {});
+                       setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 100);
+                   },
             () => setIsConnected(true),
             () => setIsConnected(false),
         );
@@ -263,7 +274,8 @@ const Chat = () => {
             <SafeAreaView style={{ flex: 1 }}>
                 <KeyboardAvoidingView
                     style={{ flex: 1 }}
-                    behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                    keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
                 >
                     {/* Header */}
                     <View style={styles.header}>
@@ -311,10 +323,10 @@ const Chat = () => {
                             {messages.length === 0 && (
                                 <Text style={styles.emptyText}>No messages yet. Say hello!</Text>
                             )}
-                            {messages.map((msg) => {
+                            {messages.map((msg,index) => {
                                 const isOwn = msg.sender_id === currentUserId;
                                 return (
-                                    <View key={msg.id} style={[styles.msgBubble, isOwn ? styles.outgoingMsg : styles.incomingMsg]}>
+                                    <View key={msg.id || 'msg-${}index}'} style={[styles.msgBubble, isOwn ? styles.outgoingMsg : styles.incomingMsg]}>
                                         <Text style={styles.msgText}>{msg.content}</Text>
                                         <Text style={styles.timeText}>
                                             {new Date(msg.sent_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -506,15 +518,15 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(255,255,255,0.2)',
         borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)',
     },
-    incomingMsg: { alignSelf: 'flex-start', borderBottomLeftRadius: 5 },
-    outgoingMsg: { alignSelf: 'flex-end', borderBottomRightRadius: 5, backgroundColor: 'rgba(255,255,255,0.15)' },
+    incomingMsg: { alignSelf: 'flex-start', borderBottomLeftRadius: 5,  backgroundColor: 'rgba(255,255,255,0.25)',  borderColor: 'rgba(255,255,255,0.4)', },
+    outgoingMsg: { alignSelf: 'flex-end', borderBottomRightRadius: 5, backgroundColor: 'rgba(0,60,140,0.5)', borderColor: 'rgba(0,60,140,0.6)', },
     msgText: { color: '#fff', fontSize: 16, lineHeight: 22 },
     timeText: { color: 'rgba(255,255,255,0.6)', fontSize: 10, marginTop: 4, alignSelf: 'flex-end' },
-    input: { flex: 1, color: '#fff', fontSize: 18 },
+    input: { flex: 1, color: '#fff', fontSize: 18, lineheight: 22 },
     inputWrapper: {
         flexDirection: 'row',
         backgroundColor: 'rgba(255,255,255,0.2)',
-        marginHorizontal: 20, marginBottom: 30,
+        marginHorizontal: 20, marginBottom: 1,
         borderRadius: 30, paddingHorizontal: 20, paddingVertical: 15,
         alignItems: 'center',
         borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)',
