@@ -12,14 +12,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { signupUser } from './services/authService';
 import { configureGoogleSignIn, signInWithGoogle } from './services/googleAuthService';
-
-// ── Component ─────────────────────────────────────────────────────────────────
+import { useAuth } from './context/AuthContext';
 
 const UserSignUp = () => {
 
     useEffect(() => {
         configureGoogleSignIn();
     }, []);
+
+    const { setRole } = useAuth();
 
     // Form fields
     const [fullName, setFullName]               = useState('');
@@ -29,43 +30,43 @@ const UserSignUp = () => {
     const [phoneNumber, setPhoneNumber]         = useState('');
 
     // UI state
-    const [showPassword, setShowPassword]             = useState(false);
+    const [showPassword, setShowPassword]               = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-    const [isLoading, setIsLoading]                   = useState(false);
-    const [isGoogleLoading, setIsGoogleLoading]       = useState(false);
+    const [isLoading, setIsLoading]                     = useState(false);
+    const [isGoogleLoading, setIsGoogleLoading]         = useState(false);
 
     // Field errors
-    const [fullNameError, setFullNameError]             = useState('');
-    const [emailError, setEmailError]                   = useState('');
-    const [passwordError, setPasswordError]             = useState('');
+    const [fullNameError, setFullNameError]               = useState('');
+    const [emailError, setEmailError]                     = useState('');
+    const [passwordError, setPasswordError]               = useState('');
     const [confirmPasswordError, setConfirmPasswordError] = useState('');
-    const [phoneError, setPhoneError]                   = useState('');
+    const [phoneError, setPhoneError]                     = useState('');
 
-    // ── Validation ─────────────────────────────────────────────────────────────
+    // ── Validation ──────────────────────────────────────────────────────
 
     const handleFullNameInput = (text: string) => {
         const filtered = text.replace(/[^a-zA-Z\s]/g, '');
         setFullName(filtered);
-        if (filtered.trim().length === 0)       setFullNameError('Full name is required');
-        else if (filtered.trim().length < 3)    setFullNameError('Full name must be at least 3 characters');
-        else                                    setFullNameError('');
+        if (filtered.trim().length === 0)     setFullNameError('Full name is required');
+        else if (filtered.trim().length < 3)  setFullNameError('Full name must be at least 3 characters');
+        else                                  setFullNameError('');
     };
 
     const validateEmail = (text: string) => {
         setEmail(text);
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (text.trim().length === 0)           setEmailError('Email is required');
-        else if (!emailRegex.test(text))        setEmailError('Invalid email format');
-        else                                    setEmailError('');
+        if (text.trim().length === 0)         setEmailError('Email is required');
+        else if (!emailRegex.test(text))      setEmailError('Invalid email format');
+        else                                  setEmailError('');
     };
 
     const handlePasswordInput = (text: string) => {
         setPassword(text);
-        if (text.length === 0)                  setPasswordError('Password is required');
-        else if (text.length < 8)               setPasswordError('Minimum 8 characters');
+        if (text.length === 0)                setPasswordError('Password is required');
+        else if (text.length < 8)             setPasswordError('Minimum 8 characters');
         else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])/.test(text))
             setPasswordError('Must include uppercase, lowercase and a number');
-        else                                    setPasswordError('');
+        else                                  setPasswordError('');
 
         if (confirmPassword) {
             setConfirmPasswordError(text !== confirmPassword ? 'Passwords do not match' : '');
@@ -74,22 +75,22 @@ const UserSignUp = () => {
 
     const handleConfirmPasswordInput = (text: string) => {
         setConfirmPassword(text);
-        if (text.length === 0)          setConfirmPasswordError('Please confirm your password');
-        else if (text !== password)     setConfirmPasswordError('Passwords do not match');
-        else                            setConfirmPasswordError('');
+        if (text.length === 0)        setConfirmPasswordError('Please confirm your password');
+        else if (text !== password)   setConfirmPasswordError('Passwords do not match');
+        else                          setConfirmPasswordError('');
     };
 
     const handlePhoneInput = (text: string) => {
         const filtered = text.replace(/[^0-9]/g, '');
         if (filtered.length <= 10) {
             setPhoneNumber(filtered);
-            if (filtered.length === 0)          setPhoneError('Phone number is required');
-            else if (filtered.length < 10)      setPhoneError('Phone number must be exactly 10 digits');
-            else                                setPhoneError('');
+            if (filtered.length === 0)        setPhoneError('Phone number is required');
+            else if (filtered.length < 10)    setPhoneError('Phone number must be exactly 10 digits');
+            else                              setPhoneError('');
         }
     };
 
-    // ── Google sign-in ─────────────────────────────────────────────────────────
+    // ── Google sign-in ──────────────────────────────────────────────────
 
     const handleGoogleSignIn = async () => {
         setIsGoogleLoading(true);
@@ -98,7 +99,13 @@ const UserSignUp = () => {
             const msg = response.is_new_user
                 ? `Welcome ${response.user_name}! Your account has been created.`
                 : `Welcome back, ${response.user_name}!`;
-            Alert.alert('Success!', msg, [{ text: 'OK', onPress: () => router.replace('/(tabs)') }]);
+            Alert.alert('Success!', msg, [{
+                text: 'OK',
+                onPress: () => {
+                    setRole('user');
+                    router.replace('/CustomerProfile' as any);
+                }
+            }]);
         } catch (error: any) {
             Alert.alert('Google Sign-In Failed', error.message || 'Unable to sign in with Google.', [{ text: 'OK' }]);
         } finally {
@@ -106,7 +113,7 @@ const UserSignUp = () => {
         }
     };
 
-    // ── Submit ─────────────────────────────────────────────────────────────────
+    // ── Submit ──────────────────────────────────────────────────────────
 
     const handleSignUp = async () => {
         let hasError = false;
@@ -147,7 +154,13 @@ const UserSignUp = () => {
             Alert.alert(
                 'Welcome!',
                 `Your account has been created, ${response.user_name}.`,
-                [{ text: 'OK', onPress: () => router.replace('/(tabs)') }]
+                [{
+                    text: 'OK',
+                    onPress: () => {
+                        setRole('user');
+                        router.replace('/CustomerProfile' as any);
+                    }
+                }]
             );
         } catch (error: any) {
             Alert.alert('Sign Up Failed', error.message || 'Something went wrong. Please try again.', [{ text: 'OK' }]);
@@ -156,7 +169,7 @@ const UserSignUp = () => {
         }
     };
 
-    // ── Render ─────────────────────────────────────────────────────────────────
+    // ── Render ──────────────────────────────────────────────────────────
 
     return (
         <View style={styles.mainContainer}>
@@ -186,7 +199,7 @@ const UserSignUp = () => {
                         <Text style={styles.title}>Create Account</Text>
                         <Text style={styles.subtitle}>Sign up as a customer</Text>
 
-                        {/* ── Full Name ── */}
+                        {/* Full Name */}
                         <Text style={styles.fieldLabel}>Full Name</Text>
                         <BlurView intensity={25} tint="light" style={styles.inputWrapper}>
                             <Ionicons name="person-outline" size={18} color="rgba(255,255,255,0.7)" style={styles.inputIcon} />
@@ -202,7 +215,7 @@ const UserSignUp = () => {
                         </BlurView>
                         {fullNameError ? <Text style={styles.errorText}>{fullNameError}</Text> : null}
 
-                        {/* ── Email ── */}
+                        {/* Email */}
                         <Text style={styles.fieldLabel}>Email</Text>
                         <BlurView intensity={25} tint="light" style={styles.inputWrapper}>
                             <Ionicons name="mail-outline" size={18} color="rgba(255,255,255,0.7)" style={styles.inputIcon} />
@@ -219,7 +232,7 @@ const UserSignUp = () => {
                         </BlurView>
                         {emailError ? <Text style={styles.errorText}>{emailError}</Text> : null}
 
-                        {/* ── Phone ── */}
+                        {/* Phone */}
                         <Text style={styles.fieldLabel}>Phone Number</Text>
                         <BlurView intensity={25} tint="light" style={styles.inputWrapper}>
                             <Ionicons name="call-outline" size={18} color="rgba(255,255,255,0.7)" style={styles.inputIcon} />
@@ -236,7 +249,7 @@ const UserSignUp = () => {
                         </BlurView>
                         {phoneError ? <Text style={styles.errorText}>{phoneError}</Text> : null}
 
-                        {/* ── Password ── */}
+                        {/* Password */}
                         <Text style={styles.fieldLabel}>Password</Text>
                         <BlurView intensity={25} tint="light" style={styles.inputWrapper}>
                             <Ionicons name="lock-closed-outline" size={18} color="rgba(255,255,255,0.7)" style={styles.inputIcon} />
@@ -259,7 +272,7 @@ const UserSignUp = () => {
                         </BlurView>
                         {passwordError ? <Text style={styles.errorText}>{passwordError}</Text> : null}
 
-                        {/* ── Confirm Password ── */}
+                        {/* Confirm Password */}
                         <Text style={styles.fieldLabel}>Confirm Password</Text>
                         <BlurView intensity={25} tint="light" style={styles.inputWrapper}>
                             <Ionicons name="lock-closed-outline" size={18} color="rgba(255,255,255,0.7)" style={styles.inputIcon} />
@@ -282,7 +295,7 @@ const UserSignUp = () => {
                         </BlurView>
                         {confirmPasswordError ? <Text style={styles.errorText}>{confirmPasswordError}</Text> : null}
 
-                        {/* ── Sign Up button ── */}
+                        {/* Sign Up button */}
                         <Pressable
                             style={[styles.submitBtn, isLoading && styles.submitBtnDisabled]}
                             onPress={handleSignUp}
@@ -294,14 +307,14 @@ const UserSignUp = () => {
                             }
                         </Pressable>
 
-                        {/* ── OR divider ── */}
+                        {/* OR divider */}
                         <View style={styles.dividerContainer}>
                             <View style={styles.divider} />
                             <Text style={styles.dividerText}>OR</Text>
                             <View style={styles.divider} />
                         </View>
 
-                        {/* ── Google sign-in ── */}
+                        {/* Google sign-in */}
                         <Pressable
                             style={[styles.googleButton, (isLoading || isGoogleLoading) && styles.googleButtonDisabled]}
                             onPress={handleGoogleSignIn}
@@ -320,10 +333,10 @@ const UserSignUp = () => {
                             )}
                         </Pressable>
 
-                        {/* ── Already have account ── */}
+                        {/* Already have account */}
                         <Pressable
                             style={styles.loginLink}
-                            onPress={() => router.replace('/UserLogin')}
+                            onPress={() => router.replace('/(tabs)/UserLogin')}
                             disabled={isLoading}
                         >
                             <Text style={styles.loginLinkText}>Already have an account? Sign In</Text>
@@ -336,8 +349,6 @@ const UserSignUp = () => {
     );
 };
 
-// ── Styles ────────────────────────────────────────────────────────────────────
-
 const styles = StyleSheet.create({
     mainContainer: { flex: 1 },
     safeArea:      { flex: 1, zIndex: 1 },
@@ -347,7 +358,6 @@ const styles = StyleSheet.create({
     title:    { fontSize: 28, fontWeight: '900', color: '#fff', letterSpacing: 1, marginBottom: 4 },
     subtitle: { fontSize: 14, color: 'rgba(255,255,255,0.7)', marginBottom: 28 },
 
-    // Fields
     fieldLabel: {
         color: 'rgba(255,255,255,0.85)', fontSize: 13, fontWeight: '700',
         marginBottom: 6, marginTop: 14, letterSpacing: 0.3,
@@ -366,31 +376,27 @@ const styles = StyleSheet.create({
         marginTop: 4, fontWeight: '600',
     },
 
-    // Submit button
     submitBtn: {
         backgroundColor: '#fff', borderRadius: 30, height: 60,
         justifyContent: 'center', alignItems: 'center',
         marginTop: 28, elevation: 5,
     },
     submitBtnDisabled: { opacity: 0.7 },
-    submitBtnText: { color: '#004eba', fontSize: 17, fontWeight: '900', letterSpacing: 1 },
+    submitBtnText:     { color: '#004eba', fontSize: 17, fontWeight: '900', letterSpacing: 1 },
 
-    // Divider
     dividerContainer: { flexDirection: 'row', alignItems: 'center', marginVertical: 20 },
     divider:          { flex: 1, height: 1, backgroundColor: 'rgba(255,255,255,0.3)' },
     dividerText:      { color: '#fff', paddingHorizontal: 15, fontSize: 14, fontWeight: 'bold' },
 
-    // Google button
     googleButton: {
         backgroundColor: '#fff', borderRadius: 30, height: 60,
         flexDirection: 'row', justifyContent: 'center', alignItems: 'center',
         elevation: 5, marginBottom: 10,
     },
     googleButtonDisabled: { opacity: 0.7 },
-    googleIcon:       { width: 24, height: 24, marginRight: 12 },
-    googleButtonText: { color: '#000', fontSize: 16, fontWeight: '600' },
+    googleIcon:           { width: 24, height: 24, marginRight: 12 },
+    googleButtonText:     { color: '#000', fontSize: 16, fontWeight: '600' },
 
-    // Login link
     loginLink:     { alignSelf: 'center', padding: 12, marginTop: 4 },
     loginLinkText: { color: 'rgba(255,255,255,0.8)', textDecorationLine: 'underline', fontSize: 14 },
 });

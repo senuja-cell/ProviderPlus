@@ -22,12 +22,20 @@ import { loginUser } from '../services/authService';
 import { configureGoogleSignIn, signInWithGoogle } from "../services/googleAuthService";
 import { useAuth } from '../context/AuthContext';
 
-
 type UserRole = 'customer' | 'provider';
-type Language = 'ENG' | 'සිං';
 
 const UserLogin: React.FC = () => {
 
+    const { setRole, role, isLoading: authLoading } = useAuth();
+
+    // ── If already logged in redirect to profile ──
+    useEffect(() => {
+        if (!authLoading && role === 'user') {
+            setTimeout(() => {
+                router.push('/CustomerProfile' as any);
+            }, 100);
+        }
+    }, [role, authLoading]);
     useEffect(() => {
         configureGoogleSignIn();
     }, []);
@@ -41,13 +49,12 @@ const UserLogin: React.FC = () => {
     const toggleLanguage = () => setIsSinhala(prev => !prev);
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [isGoogleLoading, setIsGoogleLoading] = useState<boolean>(false);
-    const { setRole } = useAuth();
 
     // Error states
     const [emailError, setEmailError] = useState<string>("");
     const [passwordError, setPasswordError] = useState<string>("");
 
-    const [strings, setStrings] = useState({
+    const [strings] = useState({
         login: "LOG IN",
         email: "Email",
         password: "Password",
@@ -63,10 +70,8 @@ const UserLogin: React.FC = () => {
     // handle google sign in
     const handleGoogleSignIn = async (): Promise<void> => {
         setIsGoogleLoading(true);
-        try{
+        try {
             const response = await signInWithGoogle();
-
-            //success
             const welcomeMessage = response.is_new_user
                 ? `Welcome ${response.user_name}! Your account has been created.`
                 : `Welcome back, ${response.user_name}!`;
@@ -78,29 +83,27 @@ const UserLogin: React.FC = () => {
                     {
                         text: "OK",
                         onPress: () => {
-                            router.replace("/(tabs)");
+                            setRole('user');
+                            router.replace('/(tabs)/CustomerProfile' as any);
                         }
                     }
                 ]
-            )
-        }
-        catch(error: any){
+            );
+        } catch (error: any) {
             Alert.alert(
                 "Google sign in failed",
                 error.message || "unable to sign in with Google. Please try again.",
-                [{text: "OK"}]
+                [{ text: "OK" }]
             );
-        }
-        finally{
+        } finally {
             setIsGoogleLoading(false);
         }
-    }
+    };
 
     // Email validation
     const validateEmail = (text: string) => {
         setEmail(text);
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
         if (text.trim().length === 0) {
             setEmailError("Email is required");
         } else if (!emailRegex.test(text)) {
@@ -113,7 +116,6 @@ const UserLogin: React.FC = () => {
     // Password validation
     const handlePasswordInput = (text: string) => {
         setPassword(text);
-
         if (text.length === 0) {
             setPasswordError("Password is required");
         } else {
@@ -125,7 +127,6 @@ const UserLogin: React.FC = () => {
     const handleLogin = async (): Promise<void> => {
         let hasError = false;
 
-        // Validate email
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!email.trim()) {
             setEmailError("Email is required");
@@ -135,7 +136,6 @@ const UserLogin: React.FC = () => {
             hasError = true;
         }
 
-        // Validate password
         if (!password.trim()) {
             setPasswordError("Password is required");
             hasError = true;
@@ -146,15 +146,14 @@ const UserLogin: React.FC = () => {
             return;
         }
 
-        // Call API
         setIsLoading(true);
         try {
             const response = await loginUser({
                 email: email.trim().toLowerCase(),
                 password: password
             });
-            if (userRole === 'customer'){
-                setRole('user')
+            if (userRole === 'customer') {
+                setRole('user');
                 Alert.alert(
                     "Welcome Back!",
                     `Successfully logged in as ${response.user_name}`,
@@ -162,15 +161,13 @@ const UserLogin: React.FC = () => {
                         {
                             text: "OK",
                             onPress: () => {
-                                // Navigate to home page
-                                router.replace('/(tabs)');
+                                router.replace('/(tabs)/CustomerProfile' as any);
                             }
                         }
                     ]
                 );
-            }
-            else{
-                setRole('provider')
+            } else {
+                setRole('provider');
                 Alert.alert(
                     "Welcome Back!",
                     `Successfully logged in as ${response.user_name}`,
@@ -178,17 +175,13 @@ const UserLogin: React.FC = () => {
                         {
                             text: "OK",
                             onPress: () => {
-                                // Navigate to home page
                                 router.replace('/ProviderDash');
                             }
                         }
                     ]
                 );
             }
-
-
         } catch (error: any) {
-            // Show error message
             Alert.alert(
                 "Login Failed",
                 error.message || "Incorrect email or password. Please try again.",
@@ -198,6 +191,15 @@ const UserLogin: React.FC = () => {
             setIsLoading(false);
         }
     };
+
+    // Show loading while checking auth
+    if (authLoading) {
+        return (
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#00ADF5' }}>
+                <ActivityIndicator color="#FFF" size="large" />
+            </View>
+        );
+    }
 
     return (
         <View style={styles.mainContainer}>
@@ -212,22 +214,22 @@ const UserLogin: React.FC = () => {
                 <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
                     <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
 
-                       {/* HEADER LANGUAGE TOGGLE */}
-                       <View style={styles.header}>
-                         <View style={styles.languageToggle}>
-                           <Text style={[styles.langLabel, !isSinhala && styles.langLabelActive]}>ENG</Text>
-                           <Text style={styles.langDivider}>|</Text>
-                           <Text style={[styles.langLabel, isSinhala && styles.langLabelActive]}>සිං</Text>
-                           <Switch
-                             value={isSinhala}
-                             onValueChange={toggleLanguage}
-                             trackColor={{ false: 'rgba(255,255,255,0.3)', true: '#FF6B35' }}
-                             thumbColor={isSinhala ? '#fff' : '#f0f0f0'}
-                             ios_backgroundColor="rgba(255,255,255,0.3)"
-                             style={styles.switchStyle}
-                           />
-                         </View>
-                       </View>
+                        {/* HEADER LANGUAGE TOGGLE */}
+                        <View style={styles.header}>
+                            <View style={styles.languageToggle}>
+                                <Text style={[styles.langLabel, !isSinhala && styles.langLabelActive]}>ENG</Text>
+                                <Text style={styles.langDivider}>|</Text>
+                                <Text style={[styles.langLabel, isSinhala && styles.langLabelActive]}>සිං</Text>
+                                <Switch
+                                    value={isSinhala}
+                                    onValueChange={toggleLanguage}
+                                    trackColor={{ false: 'rgba(255,255,255,0.3)', true: '#FF6B35' }}
+                                    thumbColor={isSinhala ? '#fff' : '#f0f0f0'}
+                                    ios_backgroundColor="rgba(255,255,255,0.3)"
+                                    style={styles.switchStyle}
+                                />
+                            </View>
+                        </View>
 
                         {/* LOGO */}
                         <View style={styles.logoContainer}>
@@ -269,9 +271,7 @@ const UserLogin: React.FC = () => {
                                         style={styles.inputIcon}
                                     />
                                 </BlurView>
-                                {emailError ? (
-                                    <Text style={styles.errorText}>{emailError}</Text>
-                                ) : null}
+                                {emailError ? <Text style={styles.errorText}>{emailError}</Text> : null}
                             </View>
 
                             {/* PASSWORD INPUT */}
@@ -297,12 +297,10 @@ const UserLogin: React.FC = () => {
                                         />
                                     </Pressable>
                                 </BlurView>
-                                {passwordError ? (
-                                    <Text style={styles.errorText}>{passwordError}</Text>
-                                ) : null}
+                                {passwordError ? <Text style={styles.errorText}>{passwordError}</Text> : null}
                             </View>
 
-                            {/* FORGOT PASSWORD LINK */}
+                            {/* FORGOT PASSWORD */}
                             <Pressable
                                 style={styles.forgotPassContainer}
                                 onPress={() => Alert.alert(strings.forgot, "Password reset feature coming soon!")}
@@ -324,15 +322,14 @@ const UserLogin: React.FC = () => {
                                 )}
                             </Pressable>
 
-
-                            {/*OR DIVIDER */}
+                            {/* OR DIVIDER */}
                             <View style={styles.dividerContainer}>
                                 <View style={styles.divider} />
                                 <Text style={styles.dividerText}>OR</Text>
                                 <View style={styles.divider} />
                             </View>
 
-                            {/*GOOGLE SIGN-IN BUTTON */}
+                            {/* GOOGLE SIGN-IN BUTTON */}
                             <Pressable
                                 style={[styles.googleButton, (isLoading || isGoogleLoading) && styles.googleButtonDisabled]}
                                 onPress={handleGoogleSignIn}
@@ -372,24 +369,24 @@ const styles = StyleSheet.create({
     safeArea: { flex: 1, zIndex: 1 },
     scrollContent: { paddingHorizontal: 24, paddingBottom: 100, paddingTop: 5 },
     header: { flexDirection: "row", justifyContent: "flex-end", alignItems: "center", marginTop: 20, marginBottom: 20 },
-   languageToggle: {
-     flexDirection: 'row',
-     alignItems: 'center',
-     backgroundColor: 'rgba(255,255,255,0.15)',
-     borderRadius: 20,
-     paddingHorizontal: 10,
-     paddingVertical: 4,
-   },
-    toggleBackground: { flex: 1, flexDirection: "row" },
-    langLabel:       { color: 'rgba(255,255,255,0.5)', fontWeight: '700', fontSize: 13, marginHorizontal: 3 },
-    langLabelActive: { color: 'white' },
-    langDivider:     { color: 'rgba(255,255,255,0.4)', marginHorizontal: 2 },
-    switchStyle:     { marginLeft: 6, transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] },
-    activeToggleText: { color: "#FFF" },
-    logoContainer: { alignItems: "center", marginTop:5 },
-    mainLogo: { width: 80, height: 80 },
-    welcomeText: { fontSize: 28, fontWeight: "900", color: "#FFF", letterSpacing: 2,margin:25},
-    formContainer: { width: "100%" },
+    languageToggle: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(255,255,255,0.15)',
+        borderRadius: 20,
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+    },
+    toggleBackground:  { flex: 1, flexDirection: "row" },
+    langLabel:         { color: 'rgba(255,255,255,0.5)', fontWeight: '700', fontSize: 13, marginHorizontal: 3 },
+    langLabelActive:   { color: 'white' },
+    langDivider:       { color: 'rgba(255,255,255,0.4)', marginHorizontal: 2 },
+    switchStyle:       { marginLeft: 6, transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] },
+    activeToggleText:  { color: "#FFF" },
+    logoContainer:     { alignItems: "center", marginTop: 5 },
+    mainLogo:          { width: 80, height: 80 },
+    welcomeText:       { fontSize: 28, fontWeight: "900", color: "#FFF", letterSpacing: 2, margin: 25 },
+    formContainer:     { width: "100%" },
     inlineRoleToggle: {
         alignSelf: "center",
         width: 180,
@@ -398,10 +395,10 @@ const styles = StyleSheet.create({
         backgroundColor: "#FFF",
         overflow: "hidden",
         padding: 2,
-        marginBottom:20
+        marginBottom: 20
     },
-    toggleButton: { flex: 1, justifyContent: "center", alignItems: "center", borderRadius: 25},
-    toggleText: { fontSize: 14, fontWeight: "bold", color: "#888", zIndex: 1 },
+    toggleButton:        { flex: 1, justifyContent: "center", alignItems: "center", borderRadius: 25 },
+    toggleText:          { fontSize: 14, fontWeight: "bold", color: "#888", zIndex: 1 },
     inputWrapper: {
         flexDirection: "row",
         alignItems: "center",
@@ -414,10 +411,10 @@ const styles = StyleSheet.create({
         borderColor: "rgba(255, 255, 255, 0.3)",
         overflow: 'hidden'
     },
-    textInput: { flex: 1, color: "#FFF", fontSize: 16 },
-    inputIcon: { width: 22, height: 22, tintColor: "#FFF" },
+    textInput:           { flex: 1, color: "#FFF", fontSize: 16 },
+    inputIcon:           { width: 22, height: 22, tintColor: "#FFF" },
     forgotPassContainer: { alignSelf: "center", marginBottom: 25, marginTop: 5 },
-    linkText: { color: "#FFF", textDecorationLine: "underline", fontSize: 14 },
+    linkText:            { color: "#FFF", textDecorationLine: "underline", fontSize: 14 },
     loginButton: {
         backgroundColor: "#FFF",
         borderRadius: 30,
@@ -427,12 +424,10 @@ const styles = StyleSheet.create({
         elevation: 5,
         marginBottom: 10
     },
-    loginButtonDisabled: {
-        opacity: 0.7,
-    },
-    loginButtonText: { color: "#000", fontSize: 18, fontWeight: "bold" },
-    signupTextContainer: { alignSelf: "center", padding: 10 },
-    signupText: { color: "#FFF", textDecorationLine: "underline", fontSize: 14 },
+    loginButtonDisabled:  { opacity: 0.7 },
+    loginButtonText:      { color: "#000", fontSize: 18, fontWeight: "bold" },
+    signupTextContainer:  { alignSelf: "center", padding: 10 },
+    signupText:           { color: "#FFF", textDecorationLine: "underline", fontSize: 14 },
     errorText: {
         color: '#FFD700',
         fontSize: 12,
@@ -445,17 +440,8 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginVertical: 20,
     },
-    divider: {
-        flex: 1,
-        height: 1,
-        backgroundColor: 'rgba(255, 255, 255, 0.3)',
-    },
-    dividerText: {
-        color: '#FFF',
-        paddingHorizontal: 15,
-        fontSize: 14,
-        fontWeight: 'bold',
-    },
+    divider:      { flex: 1, height: 1, backgroundColor: 'rgba(255, 255, 255, 0.3)' },
+    dividerText:  { color: '#FFF', paddingHorizontal: 15, fontSize: 14, fontWeight: 'bold' },
     googleButton: {
         backgroundColor: '#FFF',
         borderRadius: 30,
@@ -466,20 +452,9 @@ const styles = StyleSheet.create({
         elevation: 5,
         marginBottom: 20,
     },
-    googleButtonDisabled: {
-        opacity: 0.7,
-    },
-    googleIcon: {
-        width: 24,
-        height: 24,
-        marginRight: 12,
-    },
-    googleButtonText: {
-        color: '#000',
-        fontSize: 16,
-        fontWeight: '600',
-    },
+    googleButtonDisabled: { opacity: 0.7 },
+    googleIcon:           { width: 24, height: 24, marginRight: 12 },
+    googleButtonText:     { color: '#000', fontSize: 16, fontWeight: '600' },
 });
-
 
 export default UserLogin;
