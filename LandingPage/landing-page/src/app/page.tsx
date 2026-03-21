@@ -7,6 +7,10 @@ import Features from "@/components/Features";
 import Footer from "@/components/Footer";
 import TopProviders from "@/components/TopProviders";
 import OurTeam from "@/components/OurTeam";
+import ContactUs from "@/components/ContactUs";
+import ScrollToTop from "@/components/ScrollToTop";
+
+
 
 export default function Home() {
     return (
@@ -17,7 +21,9 @@ export default function Home() {
             <Features />
             <TopProviders />
             <OurTeam/>
+            <ContactUs />
             <Footer />
+            <ScrollToTop />
         </main>
     );
 }

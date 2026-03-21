@@ -5,7 +5,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const WEB_CLIENT_ID = "999315275608-6iv753scof25lhv0tuo47dmpkpnl9e7m.apps.googleusercontent.com";
 
-const TOKEN_KEY = 'auth-token';
+const TOKEN_KEY = 'auth_token';
 const USER_KEY = 'user_data';
 
 interface GoogleAuthResponse{

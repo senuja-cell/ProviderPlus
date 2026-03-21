@@ -32,6 +32,7 @@ import {
   uploadPortfolioImages,
   uploadIdentityDocument,
 } from './services/providerProfileService';
+import { useLanguage } from './context/LanguageContext'; // ✅ ADDED
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -321,78 +322,63 @@ const WorkCard: React.FC<WorkCardProps> = ({ index, work, onChange, onRemove }) 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function ProviderProfileEdit(): React.JSX.Element {
-  // ── Screen-level state ────────────────────────────────────────────────────
   const [isLoadingProfile, setIsLoadingProfile] = useState<boolean>(true);
   const [isSaving, setIsSaving]                 = useState<boolean>(false);
 
-  // ── Personal Info ─────────────────────────────────────────────────────────
   const [name, setName]                 = useState<string>('');
-  const [email, setEmail]               = useState<string>('');  // display only — not editable
+  const [email, setEmail]               = useState<string>('');
   const [contact, setContact]           = useState<string>('');
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [profileImageChanged, setProfileImageChanged] = useState<boolean>(false);
 
-  // NIC — attachment only
   const [nicAttachments, setNicAttachments] = useState<AttachmentFile[]>([]);
 
-  // ── Service Info ──────────────────────────────────────────────────────────
-  // category stores the display name; categoryId stores the actual MongoDB ObjectId
   const [category, setCategory]         = useState<string>('');
   const [categoryId, setCategoryId]     = useState<string>('');
   const [categoryModalVisible, setCategoryModalVisible] = useState<boolean>(false);
-  // Categories fetched from the backend — falls back to empty until loaded
   const [categories, setCategories]     = useState<CategoryOption[]>([]);
   const [serviceDescription, setServiceDescription] = useState<string>('');
 
-  // ── Skills ────────────────────────────────────────────────────────────────
   const [selectedSkills, setSelectedSkills]     = useState<string[]>([]);
   const [customSkills, setCustomSkills]         = useState<string[]>([]);
   const [customSkillInput, setCustomSkillInput] = useState<string>('');
   const [showSkillInput, setShowSkillInput]     = useState<boolean>(false);
 
-  // ── Location + BR cert ────────────────────────────────────────────────────
-  const [location, setLocation]                 = useState<SelectedLocation | null>(null);
+  const [location, setLocation]                   = useState<SelectedLocation | null>(null);
   const [brCertAttachments, setBrCertAttachments] = useState<AttachmentFile[]>([]);
 
-  // ── Portfolio ─────────────────────────────────────────────────────────────
   const [works, setWorks] = useState<WorkItem[]>([
     { name: '', attachments: [], description: '' },
   ]);
 
-  // ── Validation errors ─────────────────────────────────────────────────────
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // ── Language toggle ───────────────────────────────────────────────────────
-  const [isSinhala, setIsSinhala] = useState<boolean>(false);
+  // ✅ REMOVED local isSinhala, setIsSinhala
+  // ✅ ADDED — get everything from context
+  const { isSinhala, toggleLanguage, t, isTranslating } = useLanguage();
 
   // ── STEP 1: Load existing profile on mount ────────────────────────────────
-  // Calls GET /api/provider/me/profile and pre-fills all fields
   useEffect(() => {
     (async () => {
       try {
         const data = await getMyProfile();
 
-        // Personal info
         setName(data.name);
         setEmail(data.email);
         setContact(data.phone_number);
         if (data.profile_image) setProfileImage(data.profile_image);
 
-        // Category
         setCategory(data.category.name);
         setCategoryId(data.category.id);
 
-        // Service description
         setServiceDescription(data.description);
 
-        // Skills — split tags into predefined and custom
         const predefinedSet = new Set(PREDEFINED_SKILLS);
-        const existingPredefined = data.tags.filter(t => predefinedSet.has(t));
-        const existingCustom     = data.tags.filter(t => !predefinedSet.has(t));
+        const existingPredefined = data.tags.filter((tag: string) => predefinedSet.has(tag));
+        const existingCustom     = data.tags.filter((tag: string) => !predefinedSet.has(tag));
         setSelectedSkills(existingPredefined);
         setCustomSkills(existingCustom);
 
-        // Location
         if (data.location?.coordinates) {
           const [lng, lat] = data.location.coordinates;
           setLocation({ latitude: lat, longitude: lng, address: '' });
@@ -409,23 +395,22 @@ export default function ProviderProfileEdit(): React.JSX.Element {
     })();
   }, []);
 
-  // ── STEP 2: Fetch categories from backend for the dropdown ────────────────
+  // ── STEP 2: Fetch categories from backend ────────────────────────────────
   useEffect(() => {
     (async () => {
       try {
         const { default: apiClient } = await import('./services/apiClient');
         const res = await apiClient.get('category-search/categories');
-        // res.data is an array of { id, name, slug, ... }
         setCategories(
           res.data.map((c: any) => ({ id: String(c.id ?? c._id), name: c.name }))
         );
       } catch {
-        // Silent — the modal will be empty, provider can still see their existing category
+        // Silent
       }
     })();
   }, []);
 
-  // ── Read LocationPicker result when screen comes back into focus ───────────
+  // ── Read LocationPicker result when screen comes back into focus ──────────
   useFocusEffect(
     useCallback(() => {
       (async () => {
@@ -445,7 +430,6 @@ export default function ProviderProfileEdit(): React.JSX.Element {
   );
 
   // ── Profile image picker ──────────────────────────────────────────────────
-
   const handlePickProfileImage = async (): Promise<void> => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) return;
@@ -457,12 +441,11 @@ export default function ProviderProfileEdit(): React.JSX.Element {
     });
     if (!result.canceled) {
       setProfileImage(result.assets[0].uri);
-      setProfileImageChanged(true);   // flag so we know to upload it on save
+      setProfileImageChanged(true);
     }
   };
 
   // ── Skills helpers ────────────────────────────────────────────────────────
-
   const toggleSkill = (skill: string): void => {
     setSelectedSkills((prev) =>
       prev.includes(skill) ? prev.filter((s) => s !== skill) : [...prev, skill]
@@ -484,7 +467,6 @@ export default function ProviderProfileEdit(): React.JSX.Element {
   };
 
   // ── Work portfolio helpers ────────────────────────────────────────────────
-
   const handleWorkChange = (index: number, field: keyof WorkItem, value: any): void => {
     setWorks((prev) => {
       const updated = [...prev];
@@ -493,14 +475,13 @@ export default function ProviderProfileEdit(): React.JSX.Element {
     });
   };
 
-  const addWork  = (): void =>
+  const addWork = (): void =>
     setWorks((prev) => [...prev, { name: '', attachments: [], description: '' }]);
 
   const removeWork = (index: number): void =>
     setWorks((prev) => prev.filter((_, i) => i !== index));
 
   // ── NIC attachment picker ─────────────────────────────────────────────────
-
   const handleNicAttachment = (): void => {
     Alert.alert(
       'Attach NIC',
@@ -558,7 +539,6 @@ export default function ProviderProfileEdit(): React.JSX.Element {
   };
 
   // ── BR Certificate attachment picker ─────────────────────────────────────
-
   const handleBrCertAttachment = (): void => {
     Alert.alert(
       'Attach BR Certificate',
@@ -638,13 +618,11 @@ export default function ProviderProfileEdit(): React.JSX.Element {
   };
 
   // ── Validation ────────────────────────────────────────────────────────────
-
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const phoneRegex = /^\d{7,15}$/;
 
-    // Only validate format if the user has actually typed something
     if (email.trim() && !emailRegex.test(email))
       newErrors.email = 'Invalid email format';
 
@@ -663,29 +641,28 @@ export default function ProviderProfileEdit(): React.JSX.Element {
       ? <Text style={styles.errorText}>{errors[field]}</Text>
       : null;
 
-  // ── STEP 3: Save — calls the API in sequence ──────────────────────────────
-
+  // ── STEP 3: Save ──────────────────────────────────────────────────────────
   const handleSave = async (): Promise<void> => {
-        console.log('SAVE PRESSED - errors will show below');
-        console.log('name:', name, '| email:', email, '| contact:', contact);
-        console.log('category:', category, '| categoryId:', categoryId);
-        console.log('description length:', serviceDescription.length);
-        console.log('location:', location);
+    console.log('SAVE PRESSED - errors will show below');
+    console.log('name:', name, '| email:', email, '| contact:', contact);
+    console.log('category:', category, '| categoryId:', categoryId);
+    console.log('description length:', serviceDescription.length);
+    console.log('location:', location);
 
     if (!validate()) return;
 
     setIsSaving(true);
     try {
-        console.log('Saving profile with:', {
-          name: name.trim(),
-          phone_number: contact.trim(),
-          description: serviceDescription.trim(),
-          category_id: categoryId || undefined,
-          tags: [...selectedSkills, ...customSkills],
-          latitude: location?.latitude,
-          longitude: location?.longitude,
-        });
-      // 1. Save all text fields
+      console.log('Saving profile with:', {
+        name: name.trim(),
+        phone_number: contact.trim(),
+        description: serviceDescription.trim(),
+        category_id: categoryId || undefined,
+        tags: [...selectedSkills, ...customSkills],
+        latitude: location?.latitude,
+        longitude: location?.longitude,
+      });
+
       await updateMyProfile({
         name:         name.trim(),
         phone_number: contact.trim(),
@@ -696,12 +673,10 @@ export default function ProviderProfileEdit(): React.JSX.Element {
         longitude:    location?.longitude,
       });
 
-      // 2. Upload profile image if it was changed
       if (profileImageChanged && profileImage) {
         await uploadProfileImage(profileImage);
       }
 
-      // 3. Upload NIC images if any were attached
       if (nicAttachments.length > 0) {
         await uploadIdentityDocument(
           'nic',
@@ -713,7 +688,6 @@ export default function ProviderProfileEdit(): React.JSX.Element {
         );
       }
 
-      // 4. Upload BR certificate files if any were attached
       if (brCertAttachments.length > 0) {
         await uploadIdentityDocument(
           'br_certificate',
@@ -725,7 +699,6 @@ export default function ProviderProfileEdit(): React.JSX.Element {
         );
       }
 
-      // 5. Upload portfolio work images
       const allPortfolioImages = works
         .flatMap(w => w.attachments)
         .filter(a => (a.mimeType ?? '').startsWith('image/'))
@@ -737,7 +710,6 @@ export default function ProviderProfileEdit(): React.JSX.Element {
 
       Alert.alert('Profile Updated', 'Your provider profile has been saved successfully!');
 
-      // Reset one-time flags
       setProfileImageChanged(false);
       setNicAttachments([]);
       setBrCertAttachments([]);
@@ -752,8 +724,7 @@ export default function ProviderProfileEdit(): React.JSX.Element {
     }
   };
 
-  // ── Loading screen while profile data is being fetched ────────────────────
-
+  // ── Loading screen ────────────────────────────────────────────────────────
   if (isLoadingProfile) {
     return (
       <LinearGradient
@@ -761,15 +732,15 @@ export default function ProviderProfileEdit(): React.JSX.Element {
         style={[styles.gradient, { alignItems: 'center', justifyContent: 'center' }]}
       >
         <ActivityIndicator size="large" color="#fff" />
+        {/* ✅ */}
         <Text style={{ color: COLORS.textSub, marginTop: 14, fontSize: 15, fontWeight: '600' }}>
-          Loading your profile…
+          {t('Loading your profile…')}
         </Text>
       </LinearGradient>
     );
   }
 
-  // ── Render ─────────────────────────────────────────────────────────────────
-
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <LinearGradient
       colors={[COLORS.gradientTop, COLORS.gradientBot]}
@@ -793,15 +764,21 @@ export default function ProviderProfileEdit(): React.JSX.Element {
             />
           </View>
 
-          <Text style={styles.headerTitle}>Provider Profile</Text>
+          {/* ✅ */}
+          <Text style={styles.headerTitle}>{t('Provider Profile')}</Text>
 
           <View style={styles.languageToggle}>
             <Text style={[styles.langLabel, !isSinhala && styles.langLabelActive]}>ENG</Text>
             <Text style={styles.langDivider}>|</Text>
             <Text style={[styles.langLabel, isSinhala && styles.langLabelActive]}>සිං</Text>
+            {/* ✅ spinner while translating */}
+            {isTranslating && (
+              <ActivityIndicator size="small" color="#FFF" style={{ marginRight: 4 }} />
+            )}
+            {/* ✅ FIXED — was () => setIsSinhala(v => !v), now uses context toggleLanguage */}
             <Switch
               value={isSinhala}
-              onValueChange={() => setIsSinhala(v => !v)}
+              onValueChange={toggleLanguage}
               trackColor={{ false: 'rgba(255,255,255,0.3)', true: '#FF6B35' }}
               thumbColor={isSinhala ? '#fff' : '#f0f0f0'}
               ios_backgroundColor="rgba(255,255,255,0.3)"
@@ -841,17 +818,18 @@ export default function ProviderProfileEdit(): React.JSX.Element {
 
             {/* ── Personal Info ── */}
             <View style={styles.card}>
+              {/* ✅ */}
               <InputField
-                label="Name"
+                label={t('Name')}
                 value={name}
-                onChangeText={(t) => { setName(t); setErrors(e => ({ ...e, name: '' })); }}
+                onChangeText={(text) => { setName(text); setErrors(e => ({ ...e, name: '' })); }}
               />
               {err('name')}
               <View style={styles.divider} />
 
-              {/* Email is read-only — shown for reference but cannot be changed */}
+              {/* Email is read-only */}
               <InputField
-                label="Email"
+                label={t('Email')}
                 value={email}
                 onChangeText={() => {}}
                 editable={false}
@@ -859,9 +837,9 @@ export default function ProviderProfileEdit(): React.JSX.Element {
               <View style={styles.divider} />
 
               <InputField
-                label="Contact No."
+                label={t('Contact No.')}
                 value={contact}
-                onChangeText={(t) => { setContact(t); setErrors(e => ({ ...e, contact: '' })); }}
+                onChangeText={(text) => { setContact(text); setErrors(e => ({ ...e, contact: '' })); }}
                 keyboardType="phone-pad"
               />
               {err('contact')}
@@ -869,17 +847,18 @@ export default function ProviderProfileEdit(): React.JSX.Element {
               <View style={styles.divider} />
 
               {/* NIC — attachment only */}
-              <Text style={styles.inputLabel}>NIC</Text>
+              {/* ✅ */}
+              <Text style={styles.inputLabel}>{t('NIC')}</Text>
               <TouchableOpacity
                 style={styles.brCertField}
                 onPress={handleNicAttachment}
                 activeOpacity={0.8}
               >
                 <View>
-                  <Text style={styles.attachmentLabel}>Attachments</Text>
+                  <Text style={styles.attachmentLabel}>{t('Attachments')}</Text>
                   {nicAttachments.length === 0 ? (
                     <Text style={styles.attachmentPlaceholder}>
-                      Attach front &amp; back photos of your NIC
+                      {t('Attach front & back photos of your NIC')}
                     </Text>
                   ) : (
                     <Text style={styles.attachmentCount}>
@@ -908,7 +887,8 @@ export default function ProviderProfileEdit(): React.JSX.Element {
             </View>
 
             {/* ── Service Information ── */}
-            <SectionHeader title="Service Information" />
+            {/* ✅ */}
+            <SectionHeader title={t('Service Information')} />
 
             {/* Category */}
             <TouchableOpacity
@@ -917,7 +897,8 @@ export default function ProviderProfileEdit(): React.JSX.Element {
               activeOpacity={0.8}
             >
               <Text style={category ? styles.dropdownValue : styles.dropdownPlaceholder}>
-                {category || 'Category'}
+                {/* ✅ */}
+                {category || t('Category')}
               </Text>
               <Ionicons name="chevron-down" size={18} color={COLORS.textMuted} />
             </TouchableOpacity>
@@ -925,12 +906,13 @@ export default function ProviderProfileEdit(): React.JSX.Element {
 
             {/* Service Description */}
             <View style={styles.card}>
-              <Text style={styles.inputLabel}>Service Description</Text>
+              {/* ✅ */}
+              <Text style={styles.inputLabel}>{t('Service Description')}</Text>
               <TextInput
                 style={[styles.input, styles.inputMultiline, errors.serviceDescription ? styles.inputError : null]}
                 value={serviceDescription}
-                onChangeText={(t) => { setServiceDescription(t); setErrors(e => ({ ...e, serviceDescription: '' })); }}
-                placeholder="Enter A Description About You"
+                onChangeText={(text) => { setServiceDescription(text); setErrors(e => ({ ...e, serviceDescription: '' })); }}
+                placeholder={t('Enter A Description About You')}
                 placeholderTextColor={COLORS.textMuted}
                 multiline
                 numberOfLines={4}
@@ -941,8 +923,9 @@ export default function ProviderProfileEdit(): React.JSX.Element {
 
             {/* ── Skills ── */}
             <View style={styles.card}>
+              {/* ✅ */}
               <Text style={[styles.inputLabel, { textAlign: 'center', marginBottom: 14 }]}>
-                Skills
+                {t('Skills')}
               </Text>
               <View style={styles.chipsGrid}>
                 {PREDEFINED_SKILLS.map((skill) => (
@@ -971,7 +954,7 @@ export default function ProviderProfileEdit(): React.JSX.Element {
                     style={styles.customSkillInput}
                     value={customSkillInput}
                     onChangeText={setCustomSkillInput}
-                    placeholder="Enter skill name…"
+                    placeholder={t('Enter skill name…')}
                     placeholderTextColor={COLORS.textMuted}
                     autoFocus
                     onSubmitEditing={addCustomSkill}
@@ -990,7 +973,8 @@ export default function ProviderProfileEdit(): React.JSX.Element {
               ) : (
                 <TouchableOpacity style={styles.addSkillBtn} onPress={() => setShowSkillInput(true)}>
                   <AntDesign name="plus-circle" size={20} color={COLORS.accentLight} />
-                  <Text style={styles.addSkillBtnText}>Add Custom Skill</Text>
+                  {/* ✅ */}
+                  <Text style={styles.addSkillBtnText}>{t('Add Custom Skill')}</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -1005,7 +989,7 @@ export default function ProviderProfileEdit(): React.JSX.Element {
               <Text style={[styles.locationText, !location && styles.locationPlaceholder]} numberOfLines={1}>
                 {location
                   ? (location.address || `${location.latitude.toFixed(5)}, ${location.longitude.toFixed(5)}`)
-                  : 'Tap to set your business location'
+                  : t('Tap to set your business location')
                 }
               </Text>
               <Ionicons name="map-outline" size={18} color="rgba(255,255,255,0.5)" />
@@ -1014,13 +998,14 @@ export default function ProviderProfileEdit(): React.JSX.Element {
 
             {/* ── BR Certificate ── */}
             <View style={styles.card}>
-              <Text style={styles.inputLabel}>BR Certificate</Text>
+              {/* ✅ */}
+              <Text style={styles.inputLabel}>{t('BR Certificate')}</Text>
               <TouchableOpacity style={styles.brCertField} onPress={handleBrCertAttachment} activeOpacity={0.8}>
                 <View>
-                  <Text style={styles.attachmentLabel}>Attachments</Text>
+                  <Text style={styles.attachmentLabel}>{t('Attachments')}</Text>
                   {brCertAttachments.length === 0 ? (
                     <Text style={styles.attachmentPlaceholder}>
-                      Attach photos or PDF of your BR certificate
+                      {t('Attach photos or PDF of your BR certificate')}
                     </Text>
                   ) : (
                     <Text style={styles.attachmentCount}>
@@ -1049,7 +1034,8 @@ export default function ProviderProfileEdit(): React.JSX.Element {
             </View>
 
             {/* ── Work Portfolio ── */}
-            <SectionHeader title="Work Portfolio" />
+            {/* ✅ */}
+            <SectionHeader title={t('Work Portfolio')} />
 
             {works.map((work, index) => (
               <WorkCard
@@ -1062,15 +1048,18 @@ export default function ProviderProfileEdit(): React.JSX.Element {
             ))}
 
             <TouchableOpacity style={styles.addWorkBtn} onPress={addWork} activeOpacity={0.8}>
-              <Text style={styles.addWorkBtnText}>Add Another Works</Text>
+              {/* ✅ */}
+              <Text style={styles.addWorkBtnText}>{t('Add Another Works')}</Text>
               <AntDesign name="plus-circle" size={18} color={COLORS.accentLight} />
             </TouchableOpacity>
 
-            <Text style={styles.orText}>Or</Text>
+            {/* ✅ */}
+            <Text style={styles.orText}>{t('Or')}</Text>
 
             {/* Skip */}
             <TouchableOpacity style={styles.skipBtn} activeOpacity={0.8} onPress={() => router.back()}>
-              <Text style={styles.skipBtnText}>Skip</Text>
+              {/* ✅ */}
+              <Text style={styles.skipBtnText}>{t('Skip')}</Text>
             </TouchableOpacity>
 
             <View style={{ height: 16 }} />
@@ -1087,7 +1076,8 @@ export default function ProviderProfileEdit(): React.JSX.Element {
               ) : (
                 <>
                   <Ionicons name="checkmark-circle-outline" size={22} color="#fff" />
-                  <Text style={styles.saveBtnText}>Save Profile</Text>
+                  {/* ✅ */}
+                  <Text style={styles.saveBtnText}>{t('Save Profile')}</Text>
                 </>
               )}
             </TouchableOpacity>
@@ -1096,7 +1086,7 @@ export default function ProviderProfileEdit(): React.JSX.Element {
           </ScrollView>
         </KeyboardAvoidingView>
 
-        {/* ── Category Modal — shows categories from backend ── */}
+        {/* ── Category Modal ── */}
         <Modal
           visible={categoryModalVisible}
           transparent
@@ -1106,7 +1096,8 @@ export default function ProviderProfileEdit(): React.JSX.Element {
           <Pressable style={styles.modalOverlay} onPress={() => setCategoryModalVisible(false)}>
             <View style={styles.modalSheet}>
               <View style={styles.modalHandle} />
-              <Text style={styles.modalTitle}>Select Category</Text>
+              {/* ✅ */}
+              <Text style={styles.modalTitle}>{t('Select Category')}</Text>
               {categories.length === 0 ? (
                 <ActivityIndicator color={COLORS.accentLight} style={{ marginTop: 20 }} />
               ) : (

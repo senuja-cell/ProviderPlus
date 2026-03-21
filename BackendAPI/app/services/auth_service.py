@@ -36,7 +36,7 @@ async def register_new_user(user_data: UserSignupRequest) -> TokenResponse:
         email=user_data.email,
         password_hash=hashed_pwd,
         full_name=user_data.full_name,
-        phone_number = user_data.phone_number,
+        phone_number=user_data.phone_number,
         role=user_data.role
     )
 
@@ -67,11 +67,18 @@ async def authenticate_user(email: str, password: str):
     if not user:
         return None
 
-    # 2. verify password by comparing with hash
+    # 2. check if account was created with Google
+    if user.password_hash == "GOOGLE_AUTH":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This account uses Google Sign-In. Please use Continue with Google button."
+        )
+
+    # 3. verify password by comparing with hash
     if not verify_password(password, user.password_hash):
         return None
 
-    # 3. generate token
+    # 4. generate token
     access_token = create_access_token(
         data={"sub": str(user.id), "role": user.role}
     )
@@ -89,7 +96,7 @@ async def google_login(id_token_string: str) -> TokenResponse:
     """
     Verify google ID token and login/signup user
 
-    1. verify  token with ggoogle
+    1. verify token with google
     2. extract user info (email, name)
     3. check if user exists
     4. if exists, login
@@ -137,21 +144,20 @@ async def google_login(id_token_string: str) -> TokenResponse:
                 role=UserRole.CUSTOMER
             )
 
-        await new_user.insert()
+            await new_user.insert()
 
-        access_token = create_access_token(
-            data={"sub": str(new_user.id), "role": new_user.role}
-        )
+            access_token = create_access_token(
+                data={"sub": str(new_user.id), "role": new_user.role}
+            )
 
-        return TokenResponse(
-            access_token=access_token,
-            token_type="bearer",
-            user_id=str(new_user.id),
-            role=new_user.role,
-            user_name=new_user.full_name,
-            is_new_user=True
-        )
-
+            return TokenResponse(
+                access_token=access_token,
+                token_type="bearer",
+                user_id=str(new_user.id),
+                role=new_user.role,
+                user_name=new_user.full_name,
+                is_new_user=True
+            )
 
     except ValueError as e:
         raise HTTPException(
@@ -164,3 +170,48 @@ async def google_login(id_token_string: str) -> TokenResponse:
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Google authentication failed {str(e)}"
         )
+
+
+async def get_user_profile(user: User) -> dict:
+    """
+    Returns the full profile of the current user
+    """
+    return {
+        "user_id": str(user.id),
+        "full_name": user.full_name,
+        "email": user.email,
+        "phone_number": user.phone_number,
+        "birthday": user.birthday,
+        "gender": user.gender,
+        "role": user.role,
+    }
+
+
+async def update_user_profile(user: User, update_data: dict) -> dict:
+    """
+    Updates only the fields that are provided
+    """
+    # Only update fields that are not None
+    update_fields = {k: v for k, v in update_data.items() if v is not None}
+
+    if not update_fields:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No fields to update"
+        )
+
+    # Update the user in MongoDB
+    await user.update({"$set": update_fields})
+
+    # Fetch updated user
+    updated_user = await User.get(user.id)
+
+    return {
+        "user_id": str(updated_user.id),
+        "full_name": updated_user.full_name,
+        "email": updated_user.email,
+        "phone_number": updated_user.phone_number,
+        "birthday": updated_user.birthday,
+        "gender": updated_user.gender,
+        "role": updated_user.role,
+    }

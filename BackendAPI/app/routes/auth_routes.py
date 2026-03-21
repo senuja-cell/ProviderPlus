@@ -1,11 +1,14 @@
 from fastapi import APIRouter, HTTPException, status, Depends
-
 from ..core.security import get_current_user, get_current_active_user
-from ..schemas.auth_schemas import UserSignupRequest, LoginRequest, TokenResponse, GoogleLoginRequest
+from ..schemas.auth_schemas import (
+    UserSignupRequest, LoginRequest, TokenResponse,
+    GoogleLoginRequest, UpdateProfileRequest, UserProfileResponse
+)
 from ..services import auth_service
 from ..models.user_model import User
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
+
 
 @router.post("/signup", status_code=status.HTTP_201_CREATED)
 async def signup(user_data: UserSignupRequest):
@@ -18,6 +21,7 @@ async def signup(user_data: UserSignupRequest):
     result = await auth_service.register_new_user(user_data)
     return result
 
+
 @router.post("/login")
 async def login(login_data: LoginRequest):
     """
@@ -28,7 +32,6 @@ async def login(login_data: LoginRequest):
         email=str(login_data.email),
         password=login_data.password
     )
-
     if not result:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -40,12 +43,26 @@ async def login(login_data: LoginRequest):
 
 @router.get("/me")
 async def get_my_profile(current_user: User = Depends(get_current_user)):
-    return {
-        "user_id": str(current_user.id),
-        "name": current_user.full_name,
-        "email": current_user.email,
-        "role": current_user.role
-    }
+    """
+    Returns the current logged in user's profile
+    """
+    return await auth_service.get_user_profile(current_user)
+
+
+@router.put("/me")
+async def update_my_profile(
+    update_data: UpdateProfileRequest,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Update the current user's profile
+    Only updates fields that are provided
+    """
+    result = await auth_service.update_user_profile(
+        user=current_user,
+        update_data=update_data.model_dump(exclude_none=True)
+    )
+    return result
 
 
 @router.get("/verify-token")
@@ -61,13 +78,12 @@ async def verify_token(current_user: User = Depends(get_current_active_user)):
 async def google_login_endpoint(google_data: GoogleLoginRequest):
     """
     google signing endpoint
-
     1. receives google ID token from the frontend
     2. verifies token with Google
     3. checks if user exists by email
     4. if exists, login
     5. if new, create account
+    6. return a JWT token
     """
-
     result = await auth_service.google_login(google_data.id_token)
     return result

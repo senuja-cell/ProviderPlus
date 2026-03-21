@@ -9,36 +9,31 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
 import { wsService, Message } from './services/websocketService';
 import {
     getMessageHistory, markMessageRead,
     analyzeAppointment, AppointmentDetails,
     createBooking,
 } from './services/messagingApi';
+import { useLanguage } from './context/LanguageContext'; // ✅ ADDED
 
 // ── helpers ───────────────────────────────────────────────────────────────────
-/** Expo Router params can return string | string[] — always get a plain string */
+
 const asString = (v: string | string[] | undefined, fallback = ''): string =>
     Array.isArray(v) ? v[0] : (v ?? fallback);
 
-
-/** "2025-07-14" → Date object */
 const parseDate = (s: string): Date => {
     const d = new Date(s);
     return isNaN(d.getTime()) ? new Date() : d;
 };
 
-/** "03:00 PM" or "15:00" → Date object (today's date, just the time set) */
 const parseTime = (s: string): Date => {
     const base = new Date();
-    // Try HH:MM 24-hr first
     const m24 = s.match(/^(\d{1,2}):(\d{2})$/);
     if (m24) {
         base.setHours(parseInt(m24[1]), parseInt(m24[2]), 0, 0);
         return base;
     }
-    // Try HH:MM AM/PM
     const m12 = s.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
     if (m12) {
         let h = parseInt(m12[1]);
@@ -51,19 +46,15 @@ const parseTime = (s: string): Date => {
     return base;
 };
 
-/** Date → "Monday, 14 July 2025" */
 const formatDateDisplay = (d: Date): string =>
     d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
-/** Date → "YYYY-MM-DD" for the backend */
 const formatDateISO = (d: Date): string =>
     d.toISOString().split('T')[0];
 
-/** Date → "HH:MM" 24-hr for the backend */
 const formatTimeISO = (d: Date): string =>
     `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 
-/** Date → "03:00 PM" for display */
 const formatTimeDisplay = (d: Date): string =>
     d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
 
@@ -82,6 +73,29 @@ const Chat = () => {
     const providerName   = asString(params.providerName, 'Provider');
     const providerRole   = asString(params.providerRole);
 
+    // ✅ get from context
+    const { t, isSinhala } = useLanguage();
+
+    // ✅ Pre-register all texts so auto-translate picks them up
+    useEffect(() => {
+        t('Confirm');
+        t('No messages yet. Say hello!');
+        t('Type...');
+        t('Booking Details');
+        t('Reviewed from your conversation. Tap to adjust.');
+        t('Provider');
+        t('Date');
+        t('Time');
+        t('Job Summary');
+        t('Describe the job...');
+        t('Finalize Booking');
+        t('No messages yet — please fill in the details manually.');
+        t('No appointment details detected — check and edit below.');
+        t('Analysis failed — please fill in the details manually.');
+        t('Please add a job summary before finalizing.');
+        t('Could not submit booking. Please try again.');
+    }, [isSinhala]);
+
     // ── chat state ────────────────────────────────────────────────────────────
     const [messages, setMessages]           = useState<Message[]>([]);
     const [inputText, setInputText]         = useState('');
@@ -96,7 +110,6 @@ const Chat = () => {
     const [submitting, setSubmitting]       = useState(false);
     const [analyzeError, setAnalyzeError]   = useState<string | null>(null);
 
-    // Pickers
     const [selectedDate, setSelectedDate]   = useState<Date>(new Date());
     const [selectedTime, setSelectedTime]   = useState<Date>(() => {
         const d = new Date(); d.setHours(9, 0, 0, 0); return d;
@@ -104,7 +117,6 @@ const Chat = () => {
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [showTimePicker, setShowTimePicker] = useState(false);
 
-    // Job summary (only editable field left as text)
     const [bookingSummary, setBookingSummary] = useState('');
 
     // ── chat setup ────────────────────────────────────────────────────────────
@@ -167,7 +179,7 @@ const Chat = () => {
         setAnalyzeError(null);
 
         if (messages.length === 0) {
-            setAnalyzeError('No messages yet — please fill in the details manually.');
+            setAnalyzeError(t('No messages yet — please fill in the details manually.'));
             setAnalyzing(false);
             setModalVisible(true);
             return;
@@ -185,10 +197,10 @@ const Chat = () => {
             if (details.summary) setBookingSummary(details.summary);
 
             if (!details.found)
-                setAnalyzeError('No appointment details detected — check and edit below.');
+                setAnalyzeError(t('No appointment details detected — check and edit below.'));
         } catch (e) {
             console.error('AI analysis failed:', e);
-            setAnalyzeError('Analysis failed — please fill in the details manually.');
+            setAnalyzeError(t('Analysis failed — please fill in the details manually.'));
         } finally {
             setAnalyzing(false);
             setModalVisible(true);
@@ -197,7 +209,6 @@ const Chat = () => {
 
     // ── date / time picker callbacks ──────────────────────────────────────────
     const onDateChange = (_: DateTimePickerEvent, date?: Date) => {
-        // On Android the picker closes after one selection; on iOS it stays open
         if (Platform.OS === 'android') setShowDatePicker(false);
         if (date) setSelectedDate(date);
     };
@@ -210,12 +221,11 @@ const Chat = () => {
     // ── finalize booking ──────────────────────────────────────────────────────
     const handleFinalizeBooking = async () => {
         if (!bookingSummary.trim()) {
-            setAnalyzeError('Please add a job summary before finalizing.');
+            setAnalyzeError(t('Please add a job summary before finalizing.'));
             return;
         }
         setSubmitting(true);
         try {
-            // Read cached user location — won't prompt user again
             let userLatitude: number | undefined;
             let userLongitude: number | undefined;
 
@@ -238,7 +248,6 @@ const Chat = () => {
 
             setModalVisible(false);
 
-            // Navigate to payment page with the booking details
             router.push({
                 pathname: '/Checkout',
                 params: {
@@ -251,7 +260,7 @@ const Chat = () => {
             });
         } catch (e) {
             console.error('Booking failed:', e);
-            setAnalyzeError('Could not submit booking. Please try again.');
+            setAnalyzeError(t('Could not submit booking. Please try again.'));
             setSubmitting(false);
         }
     };
@@ -292,7 +301,8 @@ const Chat = () => {
                         >
                             {analyzing
                                 ? <ActivityIndicator size="small" color="#fff" />
-                                : <Text style={styles.confirmBtnText}>Confirm</Text>
+                                // ✅
+                                : <Text style={styles.confirmBtnText}>{t('Confirm')}</Text>
                             }
                         </TouchableOpacity>
                     </View>
@@ -309,7 +319,8 @@ const Chat = () => {
                             contentContainerStyle={{ paddingBottom: 20 }}
                         >
                             {messages.length === 0 && (
-                                <Text style={styles.emptyText}>No messages yet. Say hello!</Text>
+                                // ✅
+                                <Text style={styles.emptyText}>{t('No messages yet. Say hello!')}</Text>
                             )}
                             {messages.map((msg) => {
                                 const isOwn = msg.sender_id === currentUserId;
@@ -328,7 +339,8 @@ const Chat = () => {
                     {/* Input */}
                     <View style={styles.inputWrapper}>
                         <TextInput
-                            placeholder="Type..."
+                            // ✅
+                            placeholder={t('Type...')}
                             placeholderTextColor="rgba(255,255,255,0.7)"
                             style={styles.input}
                             value={inputText}
@@ -357,12 +369,14 @@ const Chat = () => {
 
                         {/* Title */}
                         <View style={styles.modalTitleRow}>
-                            <Text style={styles.modalTitle}>Booking Details</Text>
+                            {/* ✅ */}
+                            <Text style={styles.modalTitle}>{t('Booking Details')}</Text>
                             <TouchableOpacity onPress={() => setModalVisible(false)}>
                                 <Ionicons name="close" size={24} color="#333" />
                             </TouchableOpacity>
                         </View>
-                        <Text style={styles.modalSubtitle}>Reviewed from your conversation. Tap to adjust.</Text>
+                        {/* ✅ */}
+                        <Text style={styles.modalSubtitle}>{t('Reviewed from your conversation. Tap to adjust.')}</Text>
 
                         {/* Warning */}
                         {analyzeError && (
@@ -373,14 +387,16 @@ const Chat = () => {
                         )}
 
                         {/* Provider — read only */}
-                        <Text style={styles.fieldLabel}>Provider</Text>
+                        {/* ✅ */}
+                        <Text style={styles.fieldLabel}>{t('Provider')}</Text>
                         <View style={styles.fieldReadOnly}>
                             <Ionicons name="person-outline" size={16} color="#2E86D4" style={styles.fieldIcon} />
                             <Text style={styles.fieldReadOnlyText}>{providerName}  ·  {providerRole}</Text>
                         </View>
 
                         {/* ── DATE PICKER ── */}
-                        <Text style={styles.fieldLabel}>Date</Text>
+                        {/* ✅ */}
+                        <Text style={styles.fieldLabel}>{t('Date')}</Text>
                         <TouchableOpacity style={styles.pickerTrigger} onPress={() => {
                             setShowTimePicker(false);
                             setShowDatePicker(v => !v);
@@ -402,7 +418,8 @@ const Chat = () => {
                         )}
 
                         {/* ── TIME PICKER ── */}
-                        <Text style={styles.fieldLabel}>Time</Text>
+                        {/* ✅ */}
+                        <Text style={styles.fieldLabel}>{t('Time')}</Text>
                         <TouchableOpacity style={styles.pickerTrigger} onPress={() => {
                             setShowDatePicker(false);
                             setShowTimePicker(v => !v);
@@ -424,14 +441,15 @@ const Chat = () => {
                         )}
 
                         {/* Job summary */}
-                        <Text style={styles.fieldLabel}>Job Summary</Text>
+                        {/* ✅ */}
+                        <Text style={styles.fieldLabel}>{t('Job Summary')}</Text>
                         <View style={[styles.fieldRow, styles.fieldRowMultiline]}>
                             <Ionicons name="document-text-outline" size={16} color="#2E86D4" style={[styles.fieldIcon, { marginTop: 3 }]} />
                             <TextInput
                                 style={[styles.fieldInput, styles.fieldInputMultiline]}
                                 value={bookingSummary}
                                 onChangeText={setBookingSummary}
-                                placeholder="Describe the job..."
+                                placeholder={t('Describe the job...')}
                                 placeholderTextColor="#aaa"
                                 multiline
                                 numberOfLines={3}
@@ -453,7 +471,8 @@ const Chat = () => {
                                     ? <ActivityIndicator color="#fff" />
                                     : <>
                                         <Ionicons name="checkmark-circle-outline" size={20} color="#fff" style={{ marginRight: 8 }} />
-                                        <Text style={styles.finalizeBtnText}>Finalize Booking</Text>
+                                        {/* ✅ */}
+                                        <Text style={styles.finalizeBtnText}>{t('Finalize Booking')}</Text>
                                     </>
                                 }
                             </TouchableOpacity>
@@ -469,14 +488,12 @@ const Chat = () => {
 
 const styles = StyleSheet.create({
     container: { flex: 1 },
-
     header: {
         flexDirection: 'row',
         paddingHorizontal: 20,
         paddingTop: 54,
         paddingBottom: 15,
     },
-
     glassCard: {
         flexDirection: 'row',
         backgroundColor: 'rgba(255,255,255,0.25)',
@@ -497,7 +514,6 @@ const styles = StyleSheet.create({
     },
     confirmBtnDisabled: { opacity: 0.6 },
     confirmBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
-
     loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     messageList: { flex: 1, paddingHorizontal: 20, marginTop: 30 },
     emptyText: { color: 'rgba(255,255,255,0.6)', textAlign: 'center', marginTop: 40, fontSize: 14 },
@@ -520,8 +536,6 @@ const styles = StyleSheet.create({
         borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)',
     },
     sendBtn: { marginLeft: 10 },
-
-    // Modal
     modalBackdrop: {
         position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
         backgroundColor: 'rgba(0,0,0,0.45)',
@@ -552,8 +566,6 @@ const styles = StyleSheet.create({
         padding: 10, marginBottom: 14, gap: 8,
     },
     warningText: { flex: 1, fontSize: 12, color: '#E65100', lineHeight: 18 },
-
-    // Form
     fieldLabel: {
         fontSize: 11, fontWeight: '700', color: '#888',
         marginBottom: 6, marginTop: 14,
@@ -567,8 +579,6 @@ const styles = StyleSheet.create({
     },
     fieldReadOnlyText: { fontSize: 15, color: '#1A1A1A', fontWeight: '500' },
     fieldIcon: { marginRight: 8 },
-
-    // Picker trigger button
     pickerTrigger: {
         flexDirection: 'row', alignItems: 'center',
         backgroundColor: '#F4F8FF', borderRadius: 12,
@@ -576,15 +586,11 @@ const styles = StyleSheet.create({
         borderWidth: 1, borderColor: '#E8F0FB',
     },
     pickerTriggerText: { flex: 1, fontSize: 15, color: '#1A1A1A', fontWeight: '500' },
-
-    // Inline picker (iOS inline calendar / spinner)
     inlinePicker: {
         backgroundColor: '#F4F8FF',
         borderRadius: 12,
         marginTop: 4,
     },
-
-    // Summary text field
     fieldRow: {
         flexDirection: 'row', alignItems: 'center',
         backgroundColor: '#F4F8FF', borderRadius: 12,
@@ -594,8 +600,6 @@ const styles = StyleSheet.create({
     fieldRowMultiline: { alignItems: 'flex-start' },
     fieldInput: { flex: 1, fontSize: 15, color: '#1A1A1A' },
     fieldInputMultiline: { minHeight: 64, textAlignVertical: 'top' },
-
-    // Finalize button
     finalizeBtn: {
         borderRadius: 30, marginTop: 24, overflow: 'hidden',
         shadowColor: '#1A4F9C', shadowOpacity: 0.35, shadowRadius: 10,

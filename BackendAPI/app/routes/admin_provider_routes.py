@@ -24,7 +24,6 @@ async def get_current_admin(current_user: User = Depends(get_current_user)) -> U
         )
     return current_user
 
-
 # GET PENDING PROVIDERS
 @router.get("/pending")
 async def get_pending_providers(
@@ -35,7 +34,10 @@ async def get_pending_providers(
     returns providers where isverified =  False
     """
 
-    providers = await Provider.find(Provider.is_verified == False).to_list()
+    providers = await Provider.find(
+        Provider.is_verified == False,
+        {"business_documents": {"$exists": True, "$ne": []}}
+    ).to_list()
 
     result = []
     for provider in providers:
@@ -143,27 +145,18 @@ async def get_provider_details(
 async def download_provider_document(
         provider_id: str,
         file_id: str,
-        current_admin: User = Depends(get_current_admin)
 ):
-    """
-    downloads a  proivder's business document
-    retuurns PDF file for admin review
-    """
-
     try:
         content = await download_document(file_id)
-
         return StreamingResponse(
             io.BytesIO(content),
             media_type="application/pdf",
             headers={
-                "Content-Disposition": f"inline; filename=document_{file_id}.pdf"
+                "Content-Disposition": f"attachment; filename=document_{file_id}.pdf"  # inline -> attachment
             }
         )
-
     except Exception as e:
         raise HTTPException(status_code=404, detail="Document not found")
-
 
 
 # VERIFY/REJECT DOCUMENT

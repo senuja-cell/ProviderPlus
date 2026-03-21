@@ -27,6 +27,16 @@ type UserRole = 'customer' | 'provider';
 
 const UserLogin: React.FC = () => {
 
+    const { setRole, role, isLoading: authLoading } = useAuth();
+
+    // ── If already logged in redirect to profile ──
+    useEffect(() => {
+        if (!authLoading && role === 'user') {
+            setTimeout(() => {
+                router.push('/CustomerProfile' as any);
+            }, 100);
+        }
+    }, [role, authLoading]);
     useEffect(() => {
         configureGoogleSignIn();
     }, []);
@@ -137,6 +147,15 @@ const UserLogin: React.FC = () => {
             setIsLoading(false);
         }
     };
+
+    // Show loading while checking auth
+    if (authLoading) {
+        return (
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#00ADF5' }}>
+                <ActivityIndicator color="#FFF" size="large" />
+            </View>
+        );
+    }
 
     return (
         <View style={styles.mainContainer}>
@@ -351,10 +370,10 @@ const styles = StyleSheet.create({
         borderColor: "rgba(255, 255, 255, 0.3)",
         overflow: 'hidden'
     },
-    textInput: { flex: 1, color: "#FFF", fontSize: 16 },
-    inputIcon: { width: 22, height: 22, tintColor: "#FFF" },
+    textInput:           { flex: 1, color: "#FFF", fontSize: 16 },
+    inputIcon:           { width: 22, height: 22, tintColor: "#FFF" },
     forgotPassContainer: { alignSelf: "center", marginBottom: 25, marginTop: 5 },
-    linkText: { color: "#FFF", textDecorationLine: "underline", fontSize: 14 },
+    linkText:            { color: "#FFF", textDecorationLine: "underline", fontSize: 14 },
     loginButton: {
         backgroundColor: "#FFF",
         borderRadius: 30,
@@ -392,6 +411,5 @@ const styles = StyleSheet.create({
     googleIcon: { width: 24, height: 24, marginRight: 12 },
     googleButtonText: { color: '#000', fontSize: 16, fontWeight: '600' },
 });
-
 
 export default UserLogin;

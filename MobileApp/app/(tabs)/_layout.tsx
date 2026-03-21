@@ -22,13 +22,13 @@ import { useAuth } from './../context/AuthContext';
 const ROUTES = {
   // ── User / Guest tabs ──────────────────────────────────────────────
   home:            { tabFile: 'index',           path: '/(tabs)/index',           label: 'HOME',     icon: require('../../assets/images/home.png') },
-  survy:           { tabFile: 'Survy',           path: '/AiPage',                 label: 'SURVY',    icon: require('../../assets/images/survy.png') },
+  survy:           { tabFile: 'PendingProviders',           path: '/PendingProviders',                 label: 'SURVY',    icon: require('../../assets/images/survy.png') },
   orders:          { tabFile: 'Orders',          path: '/(tabs)/Orders',          label: 'ORDERS',   icon: require('../../assets/images/orders.png') },
 
   // ── Provider tabs ──────────────────────────────────────────────────
   providerDash:    { tabFile: 'ProviderDash',    path: '/(tabs)/ProviderDash',    label: 'OVERVIEW', icon: require('../../assets/images/dashboard.png') },
   chats:           { tabFile: 'Chats',           path: '/(tabs)/Chats',           label: 'CHATS',    icon: require('../../assets/images/chats.png') },
-  schedule:        { tabFile: 'ProviderSchedule',path: '/(tabs)/ProviderSchedule',label: 'SCHEDULE', icon: require('../../assets/images/schedule.png') },
+  schedule:        { tabFile: 'ProviderAccount',path: '/(tabs)/ProviderAccount',label: 'SCHEDULE', icon: require('../../assets/images/schedule.png') },
 
   // ── Account tabs (one per auth state) ─────────────────────────────
   // ✏️  Once you create UserAccount.tsx and ProviderAccount.tsx inside
@@ -69,6 +69,8 @@ function isIntercepted(key: RouteKey): boolean {
 function AnimatedTabBar({ state, descriptors, navigation }: any) {
   const { role } = useAuth();
   const pathname = usePathname();
+  const { role } = useAuth();
+  const router = useRouter();
 
   const activeTabs         = getTabsForRole(role);
   // Collect unique tabFile names for this role (deduped — user/providerAccount
