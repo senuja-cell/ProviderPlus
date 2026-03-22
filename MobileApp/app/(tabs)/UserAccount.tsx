@@ -19,7 +19,7 @@ const SETTINGS_ITEMS = [
     { id: '6', icon: 'ℹ️', label: 'About Provider+', labelSi: 'Provider+ ගැන',       route: null },
 ];
 
-export default function CustomerProfile() {
+export default function UserAccount() {
     const [isSinhala, setIsSinhala] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [user, setUser] = useState<{

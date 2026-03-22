@@ -5,7 +5,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 // --- CONFIGURATION ---
 // 1. REPLACE THIS with the IP you found in Step 1
 // This is safe for dev because it's a local address.
-export const LAPTOP_IP = '192.168.8.168'; //
+export const LAPTOP_IP = '192.168.1.5'; //
 
 // 2. LOGIC:
 // - Android Emulator uses '10.0.2.2' (special alias for host loopback).
@@ -25,17 +25,11 @@ const apiClient = axios.create({
     }
 });
 
-let cachedToken: string | null = null;
-
-export const setTokenCache = (token: string | null) => { cachedToken = token; };
-
 apiClient.interceptors.request.use(
     async (config) => {
-        if (!cachedToken) {
-            cachedToken = await AsyncStorage.getItem('auth_token');
-        }
-        if (cachedToken) {
-            config.headers.Authorization = `Bearer ${cachedToken}`;
+        const token = await AsyncStorage.getItem('auth_token');
+        if (token) {
+            config.headers.Authorization = `Bearer ${token}`;
         }
         return config;
     },

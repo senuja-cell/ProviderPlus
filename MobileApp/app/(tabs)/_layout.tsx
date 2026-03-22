@@ -4,92 +4,74 @@ import { Tabs, useRouter, usePathname } from 'expo-router';
 import { BlurView } from 'expo-blur';
 import { useAuth } from './../context/AuthContext';
 
+// ─── Tab config per role ──────────────────────────────────────────────
+//  null (guest) →  index · Survy · Orders · UserLogin
+//  user         →  index · Survy · Orders · UserAccount
+//  provider     →  ProviderDash · Chats · ProviderSchedule · ProviderAccount
+//  admin        →  PendingProviders · UserLogin
 // ─────────────────────────────────────────────────────────────────────
-// ✏️  EDIT YOUR ROUTES HERE
-//
-// Each entry needs:
-//   tabFile  → the filename (no extension) of the .tsx inside app/(tabs)/
-//              This is what Expo Router uses to register the screen.
-//   path     → where pressing this tab actually navigates to.
-//              Usually the same as tabFile, but can differ (e.g. Survy
-//              lives in (tabs)/Survy.tsx but navigates to /AiPage).
-//   label    → text shown under the icon
-//   icon     → icon image
-//
-// If tabFile and path differ, the tab press is intercepted and router.push
-// is called instead of the default navigation.
-// ─────────────────────────────────────────────────────────────────────
-const ROUTES = {
-  // ── User / Guest tabs ──────────────────────────────────────────────
-  home:            { tabFile: 'index',           path: '/(tabs)/index',           label: 'HOME',     icon: require('../../assets/images/home.png') },
-  survy:           { tabFile: 'PendingProviders',           path: '/PendingProviders',                 label: 'SURVY',    icon: require('../../assets/images/survy.png') },
-  orders:          { tabFile: 'Orders',          path: '/(tabs)/Orders',          label: 'ORDERS',   icon: require('../../assets/images/orders.png') },
+const GUEST_TABS    = ['index', 'Survy', 'Orders', 'UserLogin']                                    as const;
+const USER_TABS     = ['index', 'Survy', 'Orders', 'UserAccount']                                  as const;
+const PROVIDER_TABS = ['ProviderDash', 'Chats', 'ProviderSchedule', 'ProviderAccount']             as const;
+const ADMIN_TABS    = ['PendingProviders', 'UserAccount']                                             as const;
 
-  // ── Provider tabs ──────────────────────────────────────────────────
-  providerDash:    { tabFile: 'ProviderDash',    path: '/(tabs)/ProviderDash',    label: 'OVERVIEW', icon: require('../../assets/images/dashboard.png') },
-  chats:           { tabFile: 'Chats',           path: '/(tabs)/Chats',           label: 'CHATS',    icon: require('../../assets/images/chats.png') },
-  schedule:        { tabFile: 'ProviderAccount',path: '/(tabs)/ProviderAccount',label: 'SCHEDULE', icon: require('../../assets/images/schedule.png') },
-
-  // ── Account tabs (one per auth state) ─────────────────────────────
-  // ✏️  Once you create UserAccount.tsx and ProviderAccount.tsx inside
-  //     app/(tabs)/, update the tabFile and path values below.
-  //     Until then they both fall back to UserLogin.
-  loginPage:       { tabFile: 'UserLogin',       path: 'UserLogin',       label: 'ACCOUNT',  icon: require('../../assets/images/account.png') },
-  userAccount:     { tabFile: 'UserLogin',       path: 'UserLogin',       label: 'ACCOUNT',  icon: require('../../assets/images/account.png') },
-  providerAccount: { tabFile: 'UserLogin', path: 'UserLogin',       label: 'ACCOUNT',  icon: require('../../assets/images/account.png') },
-} as const;
-
-// ─────────────────────────────────────────────────────────────────────
-// ✏️  EDIT YOUR TAB ORDERS HERE
-// List which keys (from ROUTES above) appear for each role, left → right.
-// ─────────────────────────────────────────────────────────────────────
-const TAB_ORDER = {
-  guest:    ['home', 'survy', 'orders', 'loginPage'      ] as const,
-  user:     ['home', 'survy', 'orders', 'userAccount'    ] as const,
-  provider: ['providerDash', 'chats', 'schedule', 'providerAccount'] as const,
+const ICON_MAP: Record<string, any> = {
+  index:            require('../../assets/images/home.png'),
+  Survy:            require('../../assets/images/survy.png'),
+  Orders:           require('../../assets/images/orders.png'),
+  UserLogin:        require('../../assets/images/account.png'),
+  UserAccount:      require('../../assets/images/account.png'),
+  ProviderDash:     require('../../assets/images/dashboard.png'),
+  Chats:            require('../../assets/images/chats.png'),
+  ProviderSchedule: require('../../assets/images/schedule.png'),
+  ProviderAccount:  require('../../assets/images/account.png'),
+  PendingProviders: require('../../assets/images/dashboard.png'),
 };
 
-// ─── Types & helpers (no need to edit below this line) ───────────────
-
-type RouteKey = keyof typeof ROUTES;
-
-function getTabsForRole(role: string | null): RouteKey[] {
-  if (role === 'provider') return [...TAB_ORDER.provider];
-  if (role === 'user')     return [...TAB_ORDER.user];
-  return [...TAB_ORDER.guest];
-}
-
-// Returns true if pressing this tab should be intercepted (path ≠ tabFile location)
-function isIntercepted(key: RouteKey): boolean {
-  const r = ROUTES[key];
-  return !r.path.includes(r.tabFile);
-}
+const LABEL_MAP: Record<string, string> = {
+  index:            'HOME',
+  Survy:            'SURVY',
+  Orders:           'ORDERS',
+  UserLogin:        'ACCOUNT',
+  UserAccount:      'ACCOUNT',
+  ProviderDash:     'OVERVIEW',
+  Chats:            'CHATS',
+  ProviderSchedule: 'SCHEDULE',
+  ProviderAccount:  'ACCOUNT',
+  PendingProviders: 'PENDING',
+};
 
 // ─── Custom Animated Tab Bar ──────────────────────────────────────────
 function AnimatedTabBar({ state, descriptors, navigation }: any) {
+  const { role, isLoading } = useAuth();
   const pathname = usePathname();
-  const { role } = useAuth();
-  const router = useRouter();
 
-  const activeTabs         = getTabsForRole(role);
-  // Collect unique tabFile names for this role (deduped — user/providerAccount
-  // may share 'UserLogin' while the real files don't exist yet)
-  const visibleTabFiles    = [...new Set(activeTabs.map(k => ROUTES[k].tabFile))];
+  const visibleTabs: readonly string[] =
+      role === 'provider' ? PROVIDER_TABS :
+          role === 'user'     ? USER_TABS     :
+              role === 'admin'    ? ADMIN_TABS    :
+                  GUEST_TABS;
 
-  const isHomePage    = pathname === '/' || pathname === '/index';
-  const isDarkbgPage  =
-      pathname.includes('UserLogin') ||
-      pathname.includes('UserAccount') ||
-      pathname.includes('ProviderAccount') ||
-      pathname.includes('Orders') ||
-      pathname.includes('ProviderDash') ||
+  const isHomePage   = pathname === '/' || pathname === '/index';
+  const isDarkbgPage =
+      pathname.includes('UserLogin')        ||
+      pathname.includes('UserAccount')      ||
+      pathname.includes('ProviderAccount')  ||
+      pathname.includes('Orders')           ||
+      pathname.includes('ProviderDash')     ||
       pathname.includes('ProviderSchedule') ||
+      pathname.includes('PendingProviders') ||
       pathname.includes('Chats');
 
   const activeTintColor   = '#000000';
   const inactiveTintColor = isDarkbgPage ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)';
 
-  const isFullWidth = isHomePage || (role === 'provider' && pathname.includes('ProviderDash'));
+  const isFullWidth =
+      isHomePage ||
+      (role === 'provider' && pathname.includes('ProviderDash')) ||
+      (role === 'admin'    && pathname.includes('PendingProviders'));
+
+  // All hooks must be declared before any early return
   const anim = useRef(new Animated.Value(isFullWidth ? 1 : 0)).current;
 
   useEffect(() => {
@@ -109,14 +91,10 @@ function AnimatedTabBar({ state, descriptors, navigation }: any) {
   const animBorderTopWidth = anim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, 0, 1] });
   const borderColor        = isDarkbgPage ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.25)';
 
-  const visibleRoutes = state.routes.filter((r: any) => visibleTabFiles.includes(r.name));
+  // Early return AFTER all hooks
+  if (isLoading) return null;
 
-  // Find the ROUTES config entry whose tabFile matches a screen name
-  const configForTabFile = (tabFile: string) => {
-    // Prefer the key that matches the current role's tab list
-    const key = activeTabs.find(k => ROUTES[k].tabFile === tabFile);
-    return key ? ROUTES[key] : null;
-  };
+  const visibleRoutes = state.routes.filter((r: any) => visibleTabs.includes(r.name));
 
   return (
       <Animated.View
@@ -142,7 +120,6 @@ function AnimatedTabBar({ state, descriptors, navigation }: any) {
           {visibleRoutes.map((route: any) => {
             const idx       = state.routes.findIndex((r: any) => r.key === route.key);
             const focused   = state.index === idx;
-            const config    = configForTabFile(route.name);
             const tintColor = focused ? activeTintColor : inactiveTintColor;
 
             const onPress = () => {
@@ -162,12 +139,12 @@ function AnimatedTabBar({ state, descriptors, navigation }: any) {
                     activeOpacity={0.7}
                 >
                   <Image
-                      source={config?.icon}
+                      source={ICON_MAP[route.name]}
                       style={{ width: 24, height: 24, tintColor }}
                       resizeMode="contain"
                   />
                   <Text style={[styles.tabLabel, { color: tintColor }]}>
-                    {config?.label ?? route.name}
+                    {LABEL_MAP[route.name] ?? route.name}
                   </Text>
                 </TouchableOpacity>
             );
@@ -180,90 +157,77 @@ function AnimatedTabBar({ state, descriptors, navigation }: any) {
 // ─── Main Tab Layout ──────────────────────────────────────────────────
 export default function TabLayout() {
   const router = useRouter();
-  const { role } = useAuth();
+  const { role, isLoading } = useAuth();
+
+  // When role is cleared by signOut(), redirect to login and reset nav stack
+  useEffect(() => {
+    if (!isLoading && role === null) {
+      router.replace('/UserLogin');
+    }
+  }, [role, isLoading]);
 
   return (
       <Tabs
           tabBar={(props) => <AnimatedTabBar {...props} />}
           screenOptions={{ headerShown: false }}
       >
-        {/* HOME */}
+        {/* All screens registered once — AnimatedTabBar controls visibility */}
+
         <Tabs.Screen
-            name={ROUTES.home.tabFile}
+            name="index"
             listeners={() => ({
               tabPress: (e) => {
-                if (role === 'provider') {
+                if (role === 'provider' || role === 'admin') {
                   e.preventDefault();
-                  router.replace(ROUTES.providerDash.path);
+                  router.replace(role === 'admin' ? '/PendingProviders' : '/ProviderDash');
                 }
               },
             })}
-            options={{ href: role === 'provider' ? null : undefined }}
         />
 
-        {/* SURVY — tabFile is Survy.tsx but navigates to /AiPage */}
         <Tabs.Screen
-            name={ROUTES.survy.tabFile}
+            name="Survy"
             listeners={() => ({
               tabPress: (e) => {
                 e.preventDefault();
-                router.push(ROUTES.survy.path);
+                router.push('/AiPage');
               },
             })}
-            options={{ href: role === 'provider' ? null : undefined }}
         />
 
-        {/* ORDERS */}
-        <Tabs.Screen
-            name={ROUTES.orders.tabFile}
-            options={{ href: role === 'provider' ? null : undefined }}
-        />
+        <Tabs.Screen name="Orders" />
 
-        {/* PROVIDER DASHBOARD */}
+        <Tabs.Screen name="UserAccount" />
+
         <Tabs.Screen
-            name={ROUTES.providerDash.tabFile}
+            name="ProviderDash"
             listeners={() => ({
               tabPress: (e) => {
                 e.preventDefault();
-                router.push(ROUTES.providerDash.path);
+                router.push('/ProviderDash');
               },
             })}
-            options={{ href: role !== 'provider' ? null : undefined }}
         />
 
-        {/* CHATS */}
+        <Tabs.Screen name="Chats" />
+
+        <Tabs.Screen name="ProviderSchedule" />
+
+        <Tabs.Screen name="ProviderAccount" />
+
         <Tabs.Screen
-            name={ROUTES.chats.tabFile}
-            options={{ href: role !== 'provider' ? null : undefined }}
+            name="PendingProviders"
+            listeners={() => ({
+              tabPress: (e) => {
+                e.preventDefault();
+                router.push('/PendingProviders');
+              },
+            })}
         />
 
-        {/* SCHEDULE */}
-        <Tabs.Screen
-            name={ROUTES.schedule.tabFile}
-            options={{ href: role !== 'provider' ? null : undefined }}
-        />
+        <Tabs.Screen name="UserLogin" />
 
-        {/* ACCOUNT — currently all three states point to UserLogin.
-          When you create UserAccount.tsx / ProviderAccount.tsx in (tabs)/,
-          update the tabFile + path in ROUTES above and uncomment the two
-          screens below. */}
-        <Tabs.Screen
-            name={ROUTES.loginPage.path}
-            options={{ href: role !== null ? null : undefined }}
-        />
-
-        {/* <Tabs.Screen
-        name={ROUTES.userAccount.tabFile}
-        options={{ href: role !== 'user' ? null : undefined }}
-      /> */}
-
-        {/* <Tabs.Screen
-        name={ROUTES.providerAccount.tabFile}
-        options={{ href: role !== 'provider' ? null : undefined }}
-      /> */}
-
-        {/* ALERTS & DASH — registered so Expo Router doesn't complain,
-          but hidden from the tab bar */}
+        {/* Hidden — registered so Expo Router doesn't complain */}
         <Tabs.Screen name="Alerts" options={{ href: null }} />
         <Tabs.Screen name="dash"   options={{ href: null }} />
       </Tabs>

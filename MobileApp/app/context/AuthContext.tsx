@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-export type UserRole = 'user' | 'provider' | null;
+// ─── Role type — add new roles here ───────────────────────────────────
+export type UserRole = 'user' | 'provider' | 'admin' | null;
 
 interface AuthContextType {
     role: UserRole;
@@ -47,7 +48,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const signOut = () => {
         setRoleState(null);
         setUserId(null);
-        AsyncStorage.multiRemove(['userRole', 'userId']);
+        AsyncStorage.multiRemove(['userRole', 'userId', 'auth_token', 'user_data']);
     };
 
     return (

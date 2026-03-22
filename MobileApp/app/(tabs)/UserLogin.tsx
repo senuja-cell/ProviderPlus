@@ -23,7 +23,7 @@ import { configureGoogleSignIn, signInWithGoogle } from "../services/googleAuthS
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 
-type UserRole = 'customer' | 'provider';
+type UserRole = 'customer' | 'provider' | 'admin';
 
 const UserLogin: React.FC = () => {
 
@@ -33,7 +33,7 @@ const UserLogin: React.FC = () => {
     useEffect(() => {
         if (!authLoading && role === 'user') {
             setTimeout(() => {
-                router.push('/CustomerProfile' as any);
+                router.push('/UserAccount' as any);
             }, 100);
         }
     }, [role, authLoading]);
@@ -50,7 +50,6 @@ const UserLogin: React.FC = () => {
     const [emailError, setEmailError] = useState<string>("");
     const [passwordError, setPasswordError] = useState<string>("");
 
-    const { setRole } = useAuth();
     const { isSinhala, toggleLanguage, t, isTranslating } = useLanguage();
 
     const handleGoogleSignIn = async (): Promise<void> => {
@@ -130,6 +129,12 @@ const UserLogin: React.FC = () => {
                     text: "OK",
                     onPress: () => router.replace('/(tabs)')
                 }]);
+            } else if (userRole === 'admin') {
+                setRole('admin');
+                Alert.alert("Welcome Back!", `Logged in as Admin`, [{
+                    text: "OK",
+                    onPress: () => router.replace('/PendingProviders' as any)
+                }]);
             } else {
                 setRole('provider');
                 Alert.alert("Welcome Back!", `Successfully logged in as ${response.user_name}`, [{
@@ -161,7 +166,7 @@ const UserLogin: React.FC = () => {
         <View style={styles.mainContainer}>
             <StatusBar barStyle="light-content" />
             <LinearGradient
-                colors={userRole === 'customer' ? ['#00ADF5', '#004eba'] : ['#1086b5', '#022373']}
+                colors={userRole === 'customer' ? ['#00ADF5', '#004eba'] : userRole === 'admin' ? ['#1a1a2e', '#16213e'] : ['#1086b5', '#022373']}
                 style={StyleSheet.absoluteFill}
                 start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
             />
@@ -199,7 +204,7 @@ const UserLogin: React.FC = () => {
                         <View style={styles.formContainer}>
 
                             {/* ROLE TOGGLE */}
-                            <View style={styles.inlineRoleToggle}>
+                            <View style={[styles.inlineRoleToggle, { width: 270 }]}>
                                 <View style={styles.toggleBackground}>
                                     <Pressable style={styles.toggleButton} onPress={() => setUserRole('customer')}>
                                         {userRole === 'customer' && <LinearGradient colors={['#00ADF5', '#0072FF']} style={[StyleSheet.absoluteFill, { borderRadius: 25 }]} />}
@@ -208,6 +213,10 @@ const UserLogin: React.FC = () => {
                                     <Pressable style={styles.toggleButton} onPress={() => setUserRole('provider')}>
                                         {userRole === 'provider' && <LinearGradient colors={['#1086b5', '#022373']} style={[StyleSheet.absoluteFill, { borderRadius: 25 }]} />}
                                         <Text style={[styles.toggleText, userRole === 'provider' && styles.activeToggleText]}>{t('Provider')}</Text>
+                                    </Pressable>
+                                    <Pressable style={styles.toggleButton} onPress={() => setUserRole('admin')}>
+                                        {userRole === 'admin' && <LinearGradient colors={['#1a1a2e', '#16213e']} style={[StyleSheet.absoluteFill, { borderRadius: 25 }]} />}
+                                        <Text style={[styles.toggleText, userRole === 'admin' && styles.activeToggleText]}>{t('Admin')}</Text>
                                     </Pressable>
                                 </View>
                             </View>
@@ -259,14 +268,6 @@ const UserLogin: React.FC = () => {
                                 {passwordError ? <Text style={styles.errorText}>{passwordError}</Text> : null}
                             </View>
 
-                            {/* FORGOT PASSWORD */}
-                            <Pressable
-                                style={styles.forgotPassContainer}
-                                onPress={() => Alert.alert(t('Forgot Password?'), "Password reset feature coming soon!")}
-                                disabled={isLoading}
-                            >
-                                <Text style={styles.linkText}>{t('Forgot Password?')}</Text>
-                            </Pressable>
 
                             {/* SIGN IN BUTTON */}
                             <Pressable

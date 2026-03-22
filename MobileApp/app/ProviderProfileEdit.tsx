@@ -32,7 +32,9 @@ import {
   uploadPortfolioImages,
   uploadIdentityDocument,
 } from './services/providerProfileService';
-import { useLanguage } from './context/LanguageContext'; // ✅ ADDED
+import { useLanguage } from './context/LanguageContext';
+import {useAuth} from "@/app/context/AuthContext"; // ✅ ADDED
+
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -123,199 +125,199 @@ const PREDEFINED_SKILLS: string[] = [
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 const InputField: React.FC<InputFieldProps> = ({
-  label, value, onChangeText, placeholder,
-  multiline = false, keyboardType = 'default', editable = true,
-}) => (
-  <View style={styles.inputWrapper}>
-    {label ? <Text style={styles.inputLabel}>{label}</Text> : null}
-    <TextInput
-      style={[styles.input, multiline && styles.inputMultiline, !editable && styles.inputDisabled]}
-      value={value}
-      onChangeText={onChangeText}
-      placeholder={placeholder ?? label}
-      placeholderTextColor={COLORS.textMuted}
-      multiline={multiline}
-      numberOfLines={multiline ? 4 : 1}
-      keyboardType={keyboardType}
-      textAlignVertical={multiline ? 'top' : 'center'}
-      editable={editable}
-    />
-  </View>
+                                                 label, value, onChangeText, placeholder,
+                                                 multiline = false, keyboardType = 'default', editable = true,
+                                               }) => (
+    <View style={styles.inputWrapper}>
+      {label ? <Text style={styles.inputLabel}>{label}</Text> : null}
+      <TextInput
+          style={[styles.input, multiline && styles.inputMultiline, !editable && styles.inputDisabled]}
+          value={value}
+          onChangeText={onChangeText}
+          placeholder={placeholder ?? label}
+          placeholderTextColor={COLORS.textMuted}
+          multiline={multiline}
+          numberOfLines={multiline ? 4 : 1}
+          keyboardType={keyboardType}
+          textAlignVertical={multiline ? 'top' : 'center'}
+          editable={editable}
+      />
+    </View>
 );
 
 const SectionHeader: React.FC<SectionHeaderProps> = ({ title }) => (
-  <View style={styles.sectionHeaderRow}>
-    <View style={styles.sectionLine} />
-    <Text style={styles.sectionTitle}>{title}</Text>
-    <View style={styles.sectionLine} />
-  </View>
+    <View style={styles.sectionHeaderRow}>
+      <View style={styles.sectionLine} />
+      <Text style={styles.sectionTitle}>{title}</Text>
+      <View style={styles.sectionLine} />
+    </View>
 );
 
 const SkillChip: React.FC<SkillChipProps> = ({
-  label, selected, onPress, onRemove, isCustom = false,
-}) => (
-  <TouchableOpacity
-    onPress={onPress}
-    style={[styles.chip, selected && styles.chipSelected]}
-    activeOpacity={0.75}
-  >
-    <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{label}</Text>
-    {isCustom && selected && onRemove && (
-      <TouchableOpacity onPress={onRemove} style={styles.chipRemove}>
-        <AntDesign name="close" size={10} color="#fff" />
-      </TouchableOpacity>
-    )}
-  </TouchableOpacity>
+                                               label, selected, onPress, onRemove, isCustom = false,
+                                             }) => (
+    <TouchableOpacity
+        onPress={onPress}
+        style={[styles.chip, selected && styles.chipSelected]}
+        activeOpacity={0.75}
+    >
+      <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{label}</Text>
+      {isCustom && selected && onRemove && (
+          <TouchableOpacity onPress={onRemove} style={styles.chipRemove}>
+            <AntDesign name="close" size={10} color="#fff" />
+          </TouchableOpacity>
+      )}
+    </TouchableOpacity>
 );
 
 const WorkCard: React.FC<WorkCardProps> = ({ index, work, onChange, onRemove }) => {
   const handleAttachment = (): void => {
     Alert.alert(
-      'Add Attachment',
-      'Choose how to add your attachment',
-      [
-        {
-          text: 'Camera',
-          onPress: async () => {
-            const permission = await ImagePicker.requestCameraPermissionsAsync();
-            if (!permission.granted) {
-              Alert.alert('Permission denied', 'Camera access is required.');
-              return;
-            }
-            const result = await ImagePicker.launchCameraAsync({
-              mediaTypes: ImagePicker.MediaTypeOptions.All,
-              allowsEditing: false,
-              quality: 0.85,
-            });
-            if (!result.canceled && result.assets.length > 0) {
-              const file = result.assets[0];
-              onChange(index, 'attachments', [
-                ...work.attachments,
-                { name: `photo_${Date.now()}.jpg`, uri: file.uri, mimeType: 'image/jpeg' },
-              ]);
-            }
-          },
-        },
-        {
-          text: 'Photo Library',
-          onPress: async () => {
-            const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-            if (!permission.granted) {
-              Alert.alert('Permission denied', 'Media library access is required.');
-              return;
-            }
-            const result = await ImagePicker.launchImageLibraryAsync({
-              mediaTypes: ImagePicker.MediaTypeOptions.All,
-              allowsMultipleSelection: true,
-              quality: 0.85,
-            });
-            if (!result.canceled) {
-              const files: AttachmentFile[] = result.assets.map((a) => ({
-                name: a.fileName ?? `image_${Date.now()}.jpg`,
-                uri: a.uri,
-                mimeType: a.mimeType ?? 'image/jpeg',
-              }));
-              onChange(index, 'attachments', [...work.attachments, ...files]);
-            }
-          },
-        },
-        {
-          text: 'Files / Documents',
-          onPress: async () => {
-            try {
-              const result = await DocumentPicker.getDocumentAsync({
-                type: '*/*',
-                multiple: true,
-                copyToCacheDirectory: true,
+        'Add Attachment',
+        'Choose how to add your attachment',
+        [
+          {
+            text: 'Camera',
+            onPress: async () => {
+              const permission = await ImagePicker.requestCameraPermissionsAsync();
+              if (!permission.granted) {
+                Alert.alert('Permission denied', 'Camera access is required.');
+                return;
+              }
+              const result = await ImagePicker.launchCameraAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.All,
+                allowsEditing: false,
+                quality: 0.85,
               });
-              if (!result.canceled && result.assets) {
+              if (!result.canceled && result.assets.length > 0) {
+                const file = result.assets[0];
+                onChange(index, 'attachments', [
+                  ...work.attachments,
+                  { name: `photo_${Date.now()}.jpg`, uri: file.uri, mimeType: 'image/jpeg' },
+                ]);
+              }
+            },
+          },
+          {
+            text: 'Photo Library',
+            onPress: async () => {
+              const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+              if (!permission.granted) {
+                Alert.alert('Permission denied', 'Media library access is required.');
+                return;
+              }
+              const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.All,
+                allowsMultipleSelection: true,
+                quality: 0.85,
+              });
+              if (!result.canceled) {
                 const files: AttachmentFile[] = result.assets.map((a) => ({
-                  name: a.name,
+                  name: a.fileName ?? `image_${Date.now()}.jpg`,
                   uri: a.uri,
-                  mimeType: a.mimeType ?? 'application/octet-stream',
+                  mimeType: a.mimeType ?? 'image/jpeg',
                 }));
                 onChange(index, 'attachments', [...work.attachments, ...files]);
               }
-            } catch {
-              Alert.alert('Error', 'Could not open file picker.');
-            }
+            },
           },
-        },
-        { text: 'Cancel', style: 'cancel' },
-      ],
-      { cancelable: true }
+          {
+            text: 'Files / Documents',
+            onPress: async () => {
+              try {
+                const result = await DocumentPicker.getDocumentAsync({
+                  type: '*/*',
+                  multiple: true,
+                  copyToCacheDirectory: true,
+                });
+                if (!result.canceled && result.assets) {
+                  const files: AttachmentFile[] = result.assets.map((a) => ({
+                    name: a.name,
+                    uri: a.uri,
+                    mimeType: a.mimeType ?? 'application/octet-stream',
+                  }));
+                  onChange(index, 'attachments', [...work.attachments, ...files]);
+                }
+              } catch {
+                Alert.alert('Error', 'Could not open file picker.');
+              }
+            },
+          },
+          { text: 'Cancel', style: 'cancel' },
+        ],
+        { cancelable: true }
     );
   };
 
   return (
-    <View style={styles.workCard}>
-      <View style={styles.workCardHeader}>
-        <Text style={styles.workCardTitle}>Work {index + 1}</Text>
-        {index > 0 && (
-          <TouchableOpacity onPress={() => onRemove(index)}>
-            <Feather name="trash-2" size={16} color={COLORS.danger} />
-          </TouchableOpacity>
-        )}
-      </View>
-
-      <View style={styles.inputWrapper}>
-        <TextInput
-          style={styles.input}
-          value={work.name}
-          onChangeText={(t) => onChange(index, 'name', t)}
-          placeholder="Work Name"
-          placeholderTextColor={COLORS.textMuted}
-        />
-      </View>
-
-      <TouchableOpacity style={styles.attachmentField} onPress={handleAttachment} activeOpacity={0.8}>
-        <View>
-          <Text style={styles.attachmentLabel}>Attachments</Text>
-          {work.attachments.length === 0 ? (
-            <Text style={styles.attachmentPlaceholder}>Add Your Images / Videos / Files Here</Text>
-          ) : (
-            <Text style={styles.attachmentCount}>
-              {work.attachments.length} file{work.attachments.length > 1 ? 's' : ''} attached
-            </Text>
+      <View style={styles.workCard}>
+        <View style={styles.workCardHeader}>
+          <Text style={styles.workCardTitle}>Work {index + 1}</Text>
+          {index > 0 && (
+              <TouchableOpacity onPress={() => onRemove(index)}>
+                <Feather name="trash-2" size={16} color={COLORS.danger} />
+              </TouchableOpacity>
           )}
         </View>
-        <Feather name="paperclip" size={18} color={COLORS.textMuted} />
-      </TouchableOpacity>
 
-      {work.attachments.length > 0 && (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.attachmentPreviewRow}>
-          {work.attachments.map((file, fi) => (
-            <View key={fi} style={styles.attachmentChip}>
-              <Feather name="file" size={12} color={COLORS.accentLight} />
-              <Text style={styles.attachmentChipText} numberOfLines={1}>
-                {file.name.length > 14 ? file.name.slice(0, 12) + '…' : file.name}
-              </Text>
-              <TouchableOpacity
-                onPress={() => {
-                  const updated = work.attachments.filter((_, i) => i !== fi);
-                  onChange(index, 'attachments', updated);
-                }}
-              >
-                <AntDesign name="close" size={10} color={COLORS.textMuted} />
-              </TouchableOpacity>
-            </View>
-          ))}
-        </ScrollView>
-      )}
+        <View style={styles.inputWrapper}>
+          <TextInput
+              style={styles.input}
+              value={work.name}
+              onChangeText={(t) => onChange(index, 'name', t)}
+              placeholder="Work Name"
+              placeholderTextColor={COLORS.textMuted}
+          />
+        </View>
 
-      <View style={styles.inputWrapper}>
-        <TextInput
-          style={[styles.input, styles.inputMultiline]}
-          value={work.description}
-          onChangeText={(t) => onChange(index, 'description', t)}
-          placeholder="Add A Description About Your Work"
-          placeholderTextColor={COLORS.textMuted}
-          multiline
-          numberOfLines={3}
-          textAlignVertical="top"
-        />
+        <TouchableOpacity style={styles.attachmentField} onPress={handleAttachment} activeOpacity={0.8}>
+          <View>
+            <Text style={styles.attachmentLabel}>Attachments</Text>
+            {work.attachments.length === 0 ? (
+                <Text style={styles.attachmentPlaceholder}>Add Your Images / Videos / Files Here</Text>
+            ) : (
+                <Text style={styles.attachmentCount}>
+                  {work.attachments.length} file{work.attachments.length > 1 ? 's' : ''} attached
+                </Text>
+            )}
+          </View>
+          <Feather name="paperclip" size={18} color={COLORS.textMuted} />
+        </TouchableOpacity>
+
+        {work.attachments.length > 0 && (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.attachmentPreviewRow}>
+              {work.attachments.map((file, fi) => (
+                  <View key={fi} style={styles.attachmentChip}>
+                    <Feather name="file" size={12} color={COLORS.accentLight} />
+                    <Text style={styles.attachmentChipText} numberOfLines={1}>
+                      {file.name.length > 14 ? file.name.slice(0, 12) + '…' : file.name}
+                    </Text>
+                    <TouchableOpacity
+                        onPress={() => {
+                          const updated = work.attachments.filter((_, i) => i !== fi);
+                          onChange(index, 'attachments', updated);
+                        }}
+                    >
+                      <AntDesign name="close" size={10} color={COLORS.textMuted} />
+                    </TouchableOpacity>
+                  </View>
+              ))}
+            </ScrollView>
+        )}
+
+        <View style={styles.inputWrapper}>
+          <TextInput
+              style={[styles.input, styles.inputMultiline]}
+              value={work.description}
+              onChangeText={(t) => onChange(index, 'description', t)}
+              placeholder="Add A Description About Your Work"
+              placeholderTextColor={COLORS.textMuted}
+              multiline
+              numberOfLines={3}
+              textAlignVertical="top"
+          />
+        </View>
       </View>
-    </View>
   );
 };
 
@@ -346,7 +348,7 @@ export default function ProviderProfileEdit(): React.JSX.Element {
 
   const [location, setLocation]                   = useState<SelectedLocation | null>(null);
   const [brCertAttachments, setBrCertAttachments] = useState<AttachmentFile[]>([]);
-
+  const { signOut } = useAuth();
   const [works, setWorks] = useState<WorkItem[]>([
     { name: '', attachments: [], description: '' },
   ]);
@@ -386,8 +388,8 @@ export default function ProviderProfileEdit(): React.JSX.Element {
 
       } catch (e: any) {
         Alert.alert(
-          'Could not load profile',
-          e?.response?.data?.detail ?? e?.message ?? 'Please check your connection and try again.',
+            'Could not load profile',
+            e?.response?.data?.detail ?? e?.message ?? 'Please check your connection and try again.',
         );
       } finally {
         setIsLoadingProfile(false);
@@ -402,7 +404,7 @@ export default function ProviderProfileEdit(): React.JSX.Element {
         const { default: apiClient } = await import('./services/apiClient');
         const res = await apiClient.get('category-search/categories');
         setCategories(
-          res.data.map((c: any) => ({ id: String(c.id ?? c._id), name: c.name }))
+            res.data.map((c: any) => ({ id: String(c.id ?? c._id), name: c.name }))
         );
       } catch {
         // Silent
@@ -412,21 +414,21 @@ export default function ProviderProfileEdit(): React.JSX.Element {
 
   // ── Read LocationPicker result when screen comes back into focus ──────────
   useFocusEffect(
-    useCallback(() => {
-      (async () => {
-        try {
-          const raw = await AsyncStorage.getItem(LOCATION_PICKER_RESULT_KEY);
-          if (raw) {
-            const parsed: SelectedLocation = JSON.parse(raw);
-            setLocation(parsed);
-            setErrors(e => ({ ...e, location: '' }));
-            await AsyncStorage.removeItem(LOCATION_PICKER_RESULT_KEY);
+      useCallback(() => {
+        (async () => {
+          try {
+            const raw = await AsyncStorage.getItem(LOCATION_PICKER_RESULT_KEY);
+            if (raw) {
+              const parsed: SelectedLocation = JSON.parse(raw);
+              setLocation(parsed);
+              setErrors(e => ({ ...e, location: '' }));
+              await AsyncStorage.removeItem(LOCATION_PICKER_RESULT_KEY);
+            }
+          } catch {
+            // ignore
           }
-        } catch {
-          // ignore
-        }
-      })();
-    }, [])
+        })();
+      }, [])
   );
 
   // ── Profile image picker ──────────────────────────────────────────────────
@@ -448,7 +450,7 @@ export default function ProviderProfileEdit(): React.JSX.Element {
   // ── Skills helpers ────────────────────────────────────────────────────────
   const toggleSkill = (skill: string): void => {
     setSelectedSkills((prev) =>
-      prev.includes(skill) ? prev.filter((s) => s !== skill) : [...prev, skill]
+        prev.includes(skill) ? prev.filter((s) => s !== skill) : [...prev, skill]
     );
   };
 
@@ -476,144 +478,144 @@ export default function ProviderProfileEdit(): React.JSX.Element {
   };
 
   const addWork = (): void =>
-    setWorks((prev) => [...prev, { name: '', attachments: [], description: '' }]);
+      setWorks((prev) => [...prev, { name: '', attachments: [], description: '' }]);
 
   const removeWork = (index: number): void =>
-    setWorks((prev) => prev.filter((_, i) => i !== index));
+      setWorks((prev) => prev.filter((_, i) => i !== index));
 
   // ── NIC attachment picker ─────────────────────────────────────────────────
   const handleNicAttachment = (): void => {
     Alert.alert(
-      'Attach NIC',
-      'Choose how to add your NIC',
-      [
-        {
-          text: 'Camera',
-          onPress: async () => {
-            const permission = await ImagePicker.requestCameraPermissionsAsync();
-            if (!permission.granted) {
-              Alert.alert('Permission denied', 'Camera access is required.');
-              return;
-            }
-            const result = await ImagePicker.launchCameraAsync({
-              mediaTypes: ImagePicker.MediaTypeOptions.Images,
-              allowsEditing: false,
-              quality: 0.9,
-            });
-            if (!result.canceled && result.assets.length > 0) {
-              const file = result.assets[0];
-              setNicAttachments(prev => [
-                ...prev,
-                { name: `nic_${Date.now()}.jpg`, uri: file.uri, mimeType: 'image/jpeg' },
-              ]);
-            }
+        'Attach NIC',
+        'Choose how to add your NIC',
+        [
+          {
+            text: 'Camera',
+            onPress: async () => {
+              const permission = await ImagePicker.requestCameraPermissionsAsync();
+              if (!permission.granted) {
+                Alert.alert('Permission denied', 'Camera access is required.');
+                return;
+              }
+              const result = await ImagePicker.launchCameraAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsEditing: false,
+                quality: 0.9,
+              });
+              if (!result.canceled && result.assets.length > 0) {
+                const file = result.assets[0];
+                setNicAttachments(prev => [
+                  ...prev,
+                  { name: `nic_${Date.now()}.jpg`, uri: file.uri, mimeType: 'image/jpeg' },
+                ]);
+              }
+            },
           },
-        },
-        {
-          text: 'Photo Library',
-          onPress: async () => {
-            const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-            if (!permission.granted) {
-              Alert.alert('Permission denied', 'Media library access is required.');
-              return;
-            }
-            const result = await ImagePicker.launchImageLibraryAsync({
-              mediaTypes: ImagePicker.MediaTypeOptions.Images,
-              allowsMultipleSelection: true,
-              quality: 0.9,
-            });
-            if (!result.canceled) {
-              const files: AttachmentFile[] = result.assets.map((a) => ({
-                name: a.fileName ?? `nic_${Date.now()}.jpg`,
-                uri: a.uri,
-                mimeType: a.mimeType ?? 'image/jpeg',
-              }));
-              setNicAttachments(prev => [...prev, ...files]);
-            }
+          {
+            text: 'Photo Library',
+            onPress: async () => {
+              const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+              if (!permission.granted) {
+                Alert.alert('Permission denied', 'Media library access is required.');
+                return;
+              }
+              const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsMultipleSelection: true,
+                quality: 0.9,
+              });
+              if (!result.canceled) {
+                const files: AttachmentFile[] = result.assets.map((a) => ({
+                  name: a.fileName ?? `nic_${Date.now()}.jpg`,
+                  uri: a.uri,
+                  mimeType: a.mimeType ?? 'image/jpeg',
+                }));
+                setNicAttachments(prev => [...prev, ...files]);
+              }
+            },
           },
-        },
-        { text: 'Cancel', style: 'cancel' },
-      ],
-      { cancelable: true }
+          { text: 'Cancel', style: 'cancel' },
+        ],
+        { cancelable: true }
     );
   };
 
   // ── BR Certificate attachment picker ─────────────────────────────────────
   const handleBrCertAttachment = (): void => {
     Alert.alert(
-      'Attach BR Certificate',
-      'Choose how to add your document',
-      [
-        {
-          text: 'Camera',
-          onPress: async () => {
-            const permission = await ImagePicker.requestCameraPermissionsAsync();
-            if (!permission.granted) {
-              Alert.alert('Permission denied', 'Camera access is required.');
-              return;
-            }
-            const result = await ImagePicker.launchCameraAsync({
-              mediaTypes: ImagePicker.MediaTypeOptions.Images,
-              allowsEditing: false,
-              quality: 0.9,
-            });
-            if (!result.canceled && result.assets.length > 0) {
-              const file = result.assets[0];
-              setBrCertAttachments(prev => [
-                ...prev,
-                { name: `br_cert_${Date.now()}.jpg`, uri: file.uri, mimeType: 'image/jpeg' },
-              ]);
-            }
-          },
-        },
-        {
-          text: 'Photo Library',
-          onPress: async () => {
-            const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-            if (!permission.granted) {
-              Alert.alert('Permission denied', 'Media library access is required.');
-              return;
-            }
-            const result = await ImagePicker.launchImageLibraryAsync({
-              mediaTypes: ImagePicker.MediaTypeOptions.Images,
-              allowsMultipleSelection: true,
-              quality: 0.9,
-            });
-            if (!result.canceled) {
-              const files: AttachmentFile[] = result.assets.map((a) => ({
-                name: a.fileName ?? `br_cert_${Date.now()}.jpg`,
-                uri: a.uri,
-                mimeType: a.mimeType ?? 'image/jpeg',
-              }));
-              setBrCertAttachments(prev => [...prev, ...files]);
-            }
-          },
-        },
-        {
-          text: 'Files / Documents',
-          onPress: async () => {
-            try {
-              const result = await DocumentPicker.getDocumentAsync({
-                type: ['application/pdf', 'image/*'],
-                multiple: true,
-                copyToCacheDirectory: true,
+        'Attach BR Certificate',
+        'Choose how to add your document',
+        [
+          {
+            text: 'Camera',
+            onPress: async () => {
+              const permission = await ImagePicker.requestCameraPermissionsAsync();
+              if (!permission.granted) {
+                Alert.alert('Permission denied', 'Camera access is required.');
+                return;
+              }
+              const result = await ImagePicker.launchCameraAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsEditing: false,
+                quality: 0.9,
               });
-              if (!result.canceled && result.assets) {
+              if (!result.canceled && result.assets.length > 0) {
+                const file = result.assets[0];
+                setBrCertAttachments(prev => [
+                  ...prev,
+                  { name: `br_cert_${Date.now()}.jpg`, uri: file.uri, mimeType: 'image/jpeg' },
+                ]);
+              }
+            },
+          },
+          {
+            text: 'Photo Library',
+            onPress: async () => {
+              const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+              if (!permission.granted) {
+                Alert.alert('Permission denied', 'Media library access is required.');
+                return;
+              }
+              const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsMultipleSelection: true,
+                quality: 0.9,
+              });
+              if (!result.canceled) {
                 const files: AttachmentFile[] = result.assets.map((a) => ({
-                  name: a.name,
+                  name: a.fileName ?? `br_cert_${Date.now()}.jpg`,
                   uri: a.uri,
-                  mimeType: a.mimeType ?? 'application/pdf',
+                  mimeType: a.mimeType ?? 'image/jpeg',
                 }));
                 setBrCertAttachments(prev => [...prev, ...files]);
               }
-            } catch {
-              Alert.alert('Error', 'Could not open file picker.');
-            }
+            },
           },
-        },
-        { text: 'Cancel', style: 'cancel' },
-      ],
-      { cancelable: true }
+          {
+            text: 'Files / Documents',
+            onPress: async () => {
+              try {
+                const result = await DocumentPicker.getDocumentAsync({
+                  type: ['application/pdf', 'image/*'],
+                  multiple: true,
+                  copyToCacheDirectory: true,
+                });
+                if (!result.canceled && result.assets) {
+                  const files: AttachmentFile[] = result.assets.map((a) => ({
+                    name: a.name,
+                    uri: a.uri,
+                    mimeType: a.mimeType ?? 'application/pdf',
+                  }));
+                  setBrCertAttachments(prev => [...prev, ...files]);
+                }
+              } catch {
+                Alert.alert('Error', 'Could not open file picker.');
+              }
+            },
+          },
+          { text: 'Cancel', style: 'cancel' },
+        ],
+        { cancelable: true }
     );
   };
 
@@ -637,9 +639,9 @@ export default function ProviderProfileEdit(): React.JSX.Element {
   };
 
   const err = (field: string) =>
-    errors[field]
-      ? <Text style={styles.errorText}>{errors[field]}</Text>
-      : null;
+      errors[field]
+          ? <Text style={styles.errorText}>{errors[field]}</Text>
+          : null;
 
   // ── STEP 3: Save ──────────────────────────────────────────────────────────
   const handleSave = async (): Promise<void> => {
@@ -679,30 +681,32 @@ export default function ProviderProfileEdit(): React.JSX.Element {
 
       if (nicAttachments.length > 0) {
         await uploadIdentityDocument(
-          'nic',
-          nicAttachments.map(f => ({
-            uri:      f.uri,
-            name:     f.name,
-            mimeType: f.mimeType ?? 'image/jpeg',
-          }))
+            'nic',
+            nicAttachments.map(f => ({
+              uri:      f.uri,
+              name:     f.name,
+              mimeType: f.mimeType ?? 'image/jpeg',
+            }))
         );
       }
 
       if (brCertAttachments.length > 0) {
         await uploadIdentityDocument(
-          'br_certificate',
-          brCertAttachments.map(f => ({
-            uri:      f.uri,
-            name:     f.name,
-            mimeType: f.mimeType ?? 'image/jpeg',
-          }))
+            'br_certificate',
+            brCertAttachments.map(f => ({
+              uri:      f.uri,
+              name:     f.name,
+              mimeType: f.mimeType ?? 'image/jpeg',
+            }))
         );
       }
 
+
+
       const allPortfolioImages = works
-        .flatMap(w => w.attachments)
-        .filter(a => (a.mimeType ?? '').startsWith('image/'))
-        .map(a => a.uri);
+          .flatMap(w => w.attachments)
+          .filter(a => (a.mimeType ?? '').startsWith('image/'))
+          .map(a => a.uri);
 
       if (allPortfolioImages.length > 0) {
         await uploadPortfolioImages(allPortfolioImages);
@@ -716,423 +720,444 @@ export default function ProviderProfileEdit(): React.JSX.Element {
 
     } catch (e: any) {
       Alert.alert(
-        'Save Failed',
-        e?.response?.data?.detail ?? e?.message ?? 'Something went wrong. Please try again.',
+          'Save Failed',
+          e?.response?.data?.detail ?? e?.message ?? 'Something went wrong. Please try again.',
       );
     } finally {
       setIsSaving(false);
     }
   };
 
+  // ── Logout ────────────────────────────────────────────────────────────────
+  const handleLogout = () => {
+    Alert.alert('Logout', 'Are you sure you want to logout?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Logout',
+        style: 'destructive',
+        onPress: () => {
+          signOut();
+          router.replace('/(tabs)/UserLogin');
+        },
+      },
+    ]);
+  };
+
   // ── Loading screen ────────────────────────────────────────────────────────
   if (isLoadingProfile) {
     return (
-      <LinearGradient
-        colors={[COLORS.gradientTop, COLORS.gradientBot]}
-        style={[styles.gradient, { alignItems: 'center', justifyContent: 'center' }]}
-      >
-        <ActivityIndicator size="large" color="#fff" />
-        {/* ✅ */}
-        <Text style={{ color: COLORS.textSub, marginTop: 14, fontSize: 15, fontWeight: '600' }}>
-          {t('Loading your profile…')}
-        </Text>
-      </LinearGradient>
+        <LinearGradient
+            colors={[COLORS.gradientTop, COLORS.gradientBot]}
+            style={[styles.gradient, { alignItems: 'center', justifyContent: 'center' }]}
+        >
+          <ActivityIndicator size="large" color="#fff" />
+          {/* ✅ */}
+          <Text style={{ color: COLORS.textSub, marginTop: 14, fontSize: 15, fontWeight: '600' }}>
+            {t('Loading your profile…')}
+          </Text>
+        </LinearGradient>
     );
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
+  // @ts-ignore
   return (
-    <LinearGradient
-      colors={[COLORS.gradientTop, COLORS.gradientBot]}
-      style={styles.gradient}
-      start={{ x: 0.5, y: 0 }}
-      end={{ x: 0.5, y: 1 }}
-    >
-      <SafeAreaView style={styles.safe}>
-        <StatusBar barStyle="light-content" backgroundColor="transparent" />
+      <LinearGradient
+          colors={[COLORS.gradientTop, COLORS.gradientBot]}
+          style={styles.gradient}
+          start={{ x: 0.5, y: 0 }}
+          end={{ x: 0.5, y: 1 }}
+      >
+        <SafeAreaView style={styles.safe}>
+          <StatusBar barStyle="light-content" backgroundColor="transparent" />
 
-        {/* ── Header ── */}
-        <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.headerBack}>
-              <Ionicons name="chevron-back" size={22} color={COLORS.text} />
-            </TouchableOpacity>
-            <Image
-              source={require('../assets/images/provider-logo.png')}
-              style={styles.headerLogo}
-              resizeMode="contain"
-            />
+          {/* ── Header ── */}
+          <View style={styles.header}>
+            <View style={styles.headerLeft}>
+              <TouchableOpacity onPress={() => router.back()} style={styles.headerBack}>
+                <Ionicons name="chevron-back" size={22} color={COLORS.text} />
+              </TouchableOpacity>
+              <Image
+                  source={require('../assets/images/provider-logo.png')}
+                  style={styles.headerLogo}
+                  resizeMode="contain"
+              />
+            </View>
+
+            {/* ✅ */}
+            <Text style={styles.headerTitle}>{t('Provider Profile')}</Text>
+
+            <View style={styles.languageToggle}>
+              <Text style={[styles.langLabel, !isSinhala && styles.langLabelActive]}>ENG</Text>
+              <Text style={styles.langDivider}>|</Text>
+              <Text style={[styles.langLabel, isSinhala && styles.langLabelActive]}>සිං</Text>
+              {/* ✅ spinner while translating */}
+              {isTranslating && (
+                  <ActivityIndicator size="small" color="#FFF" style={{ marginRight: 4 }} />
+              )}
+              {/* ✅ FIXED — was () => setIsSinhala(v => !v), now uses context toggleLanguage */}
+              <Switch
+                  value={isSinhala}
+                  onValueChange={toggleLanguage}
+                  trackColor={{ false: 'rgba(255,255,255,0.3)', true: '#FF6B35' }}
+                  thumbColor={isSinhala ? '#fff' : '#f0f0f0'}
+                  ios_backgroundColor="rgba(255,255,255,0.3)"
+                  style={styles.switchStyle}
+              />
+            </View>
           </View>
 
-          {/* ✅ */}
-          <Text style={styles.headerTitle}>{t('Provider Profile')}</Text>
-
-          <View style={styles.languageToggle}>
-            <Text style={[styles.langLabel, !isSinhala && styles.langLabelActive]}>ENG</Text>
-            <Text style={styles.langDivider}>|</Text>
-            <Text style={[styles.langLabel, isSinhala && styles.langLabelActive]}>සිං</Text>
-            {/* ✅ spinner while translating */}
-            {isTranslating && (
-              <ActivityIndicator size="small" color="#FFF" style={{ marginRight: 4 }} />
-            )}
-            {/* ✅ FIXED — was () => setIsSinhala(v => !v), now uses context toggleLanguage */}
-            <Switch
-              value={isSinhala}
-              onValueChange={toggleLanguage}
-              trackColor={{ false: 'rgba(255,255,255,0.3)', true: '#FF6B35' }}
-              thumbColor={isSinhala ? '#fff' : '#f0f0f0'}
-              ios_backgroundColor="rgba(255,255,255,0.3)"
-              style={styles.switchStyle}
-            />
-          </View>
-        </View>
-
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          keyboardVerticalOffset={80}
-        >
-          <ScrollView
-            style={styles.scroll}
-            contentContainerStyle={styles.scrollContent}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
+          <KeyboardAvoidingView
+              style={{ flex: 1 }}
+              behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+              keyboardVerticalOffset={80}
           >
-            {/* ── Avatar ── */}
-            <TouchableOpacity
-              style={styles.avatarWrapper}
-              onPress={handlePickProfileImage}
-              activeOpacity={0.85}
+            <ScrollView
+                style={styles.scroll}
+                contentContainerStyle={styles.scrollContent}
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
             >
-              {profileImage ? (
-                <Image source={{ uri: profileImage }} style={styles.avatar} />
-              ) : (
-                <View style={styles.avatarPlaceholder}>
-                  <Ionicons name="person" size={38} color="rgba(255,255,255,0.5)" />
-                </View>
-              )}
-              <View style={styles.avatarBadge}>
-                <Feather name="camera" size={11} color="#fff" />
-              </View>
-            </TouchableOpacity>
-
-            {/* ── Personal Info ── */}
-            <View style={styles.card}>
-              {/* ✅ */}
-              <InputField
-                label={t('Name')}
-                value={name}
-                onChangeText={(text) => { setName(text); setErrors(e => ({ ...e, name: '' })); }}
-              />
-              {err('name')}
-              <View style={styles.divider} />
-
-              {/* Email is read-only */}
-              <InputField
-                label={t('Email')}
-                value={email}
-                onChangeText={() => {}}
-                editable={false}
-              />
-              <View style={styles.divider} />
-
-              <InputField
-                label={t('Contact No.')}
-                value={contact}
-                onChangeText={(text) => { setContact(text); setErrors(e => ({ ...e, contact: '' })); }}
-                keyboardType="phone-pad"
-              />
-              {err('contact')}
-
-              <View style={styles.divider} />
-
-              {/* NIC — attachment only */}
-              {/* ✅ */}
-              <Text style={styles.inputLabel}>{t('NIC')}</Text>
+              {/* ── Avatar ── */}
               <TouchableOpacity
-                style={styles.brCertField}
-                onPress={handleNicAttachment}
-                activeOpacity={0.8}
+                  style={styles.avatarWrapper}
+                  onPress={handlePickProfileImage}
+                  activeOpacity={0.85}
               >
-                <View>
-                  <Text style={styles.attachmentLabel}>{t('Attachments')}</Text>
-                  {nicAttachments.length === 0 ? (
-                    <Text style={styles.attachmentPlaceholder}>
-                      {t('Attach front & back photos of your NIC')}
-                    </Text>
-                  ) : (
-                    <Text style={styles.attachmentCount}>
-                      {nicAttachments.length} photo{nicAttachments.length > 1 ? 's' : ''} attached
-                    </Text>
-                  )}
+                {profileImage ? (
+                    <Image source={{ uri: profileImage }} style={styles.avatar} />
+                ) : (
+                    <View style={styles.avatarPlaceholder}>
+                      <Ionicons name="person" size={38} color="rgba(255,255,255,0.5)" />
+                    </View>
+                )}
+                <View style={styles.avatarBadge}>
+                  <Feather name="camera" size={11} color="#fff" />
                 </View>
-                <Feather name="id-card" size={18} color={COLORS.textMuted} />
               </TouchableOpacity>
 
-              {nicAttachments.length > 0 && (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.attachmentPreviewRow}>
-                  {nicAttachments.map((file, fi) => (
-                    <View key={fi} style={styles.attachmentChip}>
-                      <Feather name="image" size={12} color={COLORS.accentLight} />
-                      <Text style={styles.attachmentChipText} numberOfLines={1}>
-                        {file.name.length > 14 ? file.name.slice(0, 12) + '…' : file.name}
-                      </Text>
-                      <TouchableOpacity onPress={() => setNicAttachments(prev => prev.filter((_, i) => i !== fi))}>
-                        <AntDesign name="close" size={10} color={COLORS.textMuted} />
-                      </TouchableOpacity>
-                    </View>
-                  ))}
-                </ScrollView>
-              )}
-            </View>
-
-            {/* ── Service Information ── */}
-            {/* ✅ */}
-            <SectionHeader title={t('Service Information')} />
-
-            {/* Category */}
-            <TouchableOpacity
-              style={[styles.dropdown, errors.category ? styles.inputError : null]}
-              onPress={() => setCategoryModalVisible(true)}
-              activeOpacity={0.8}
-            >
-              <Text style={category ? styles.dropdownValue : styles.dropdownPlaceholder}>
+              {/* ── Personal Info ── */}
+              <View style={styles.card}>
                 {/* ✅ */}
-                {category || t('Category')}
-              </Text>
-              <Ionicons name="chevron-down" size={18} color={COLORS.textMuted} />
-            </TouchableOpacity>
-            {err('category')}
+                <InputField
+                    label={t('Name')}
+                    value={name}
+                    onChangeText={(text) => { setName(text); setErrors(e => ({ ...e, name: '' })); }}
+                />
+                {err('name')}
+                <View style={styles.divider} />
 
-            {/* Service Description */}
-            <View style={styles.card}>
-              {/* ✅ */}
-              <Text style={styles.inputLabel}>{t('Service Description')}</Text>
-              <TextInput
-                style={[styles.input, styles.inputMultiline, errors.serviceDescription ? styles.inputError : null]}
-                value={serviceDescription}
-                onChangeText={(text) => { setServiceDescription(text); setErrors(e => ({ ...e, serviceDescription: '' })); }}
-                placeholder={t('Enter A Description About You')}
-                placeholderTextColor={COLORS.textMuted}
-                multiline
-                numberOfLines={4}
-                textAlignVertical="top"
-              />
-              {err('serviceDescription')}
-            </View>
+                {/* Email is read-only */}
+                <InputField
+                    label={t('Email')}
+                    value={email}
+                    onChangeText={() => {}}
+                    editable={false}
+                />
+                <View style={styles.divider} />
 
-            {/* ── Skills ── */}
-            <View style={styles.card}>
-              {/* ✅ */}
-              <Text style={[styles.inputLabel, { textAlign: 'center', marginBottom: 14 }]}>
-                {t('Skills')}
-              </Text>
-              <View style={styles.chipsGrid}>
-                {PREDEFINED_SKILLS.map((skill) => (
-                  <SkillChip
-                    key={skill}
-                    label={skill}
-                    selected={selectedSkills.includes(skill)}
-                    onPress={() => toggleSkill(skill)}
-                  />
-                ))}
-                {customSkills.map((skill) => (
-                  <SkillChip
-                    key={`custom-${skill}`}
-                    label={skill}
-                    selected={selectedSkills.includes(skill)}
-                    onPress={() => toggleSkill(skill)}
-                    onRemove={() => removeCustomSkill(skill)}
-                    isCustom
-                  />
-                ))}
+                <InputField
+                    label={t('Contact No.')}
+                    value={contact}
+                    onChangeText={(text) => { setContact(text); setErrors(e => ({ ...e, contact: '' })); }}
+                    keyboardType="phone-pad"
+                />
+                {err('contact')}
+
+                <View style={styles.divider} />
+
+                {/* NIC — attachment only */}
+                {/* ✅ */}
+                <Text style={styles.inputLabel}>{t('NIC')}</Text>
+                <TouchableOpacity
+                    style={styles.brCertField}
+                    onPress={handleNicAttachment}
+                    activeOpacity={0.8}
+                >
+                  <View>
+                    <Text style={styles.attachmentLabel}>{t('Attachments')}</Text>
+                    {nicAttachments.length === 0 ? (
+                        <Text style={styles.attachmentPlaceholder}>
+                          {t('Attach front & back photos of your NIC')}
+                        </Text>
+                    ) : (
+                        <Text style={styles.attachmentCount}>
+                          {nicAttachments.length} photo{nicAttachments.length > 1 ? 's' : ''} attached
+                        </Text>
+                    )}
+                  </View>
+                  <Feather size={18} color={COLORS.textMuted} />
+                </TouchableOpacity>
+
+                {nicAttachments.length > 0 && (
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.attachmentPreviewRow}>
+                      {nicAttachments.map((file, fi) => (
+                          <View key={fi} style={styles.attachmentChip}>
+                            <Feather name="image" size={12} color={COLORS.accentLight} />
+                            <Text style={styles.attachmentChipText} numberOfLines={1}>
+                              {file.name.length > 14 ? file.name.slice(0, 12) + '…' : file.name}
+                            </Text>
+                            <TouchableOpacity onPress={() => setNicAttachments(prev => prev.filter((_, i) => i !== fi))}>
+                              <AntDesign name="close" size={10} color={COLORS.textMuted} />
+                            </TouchableOpacity>
+                          </View>
+                      ))}
+                    </ScrollView>
+                )}
               </View>
 
-              {showSkillInput ? (
-                <View style={styles.customSkillRow}>
-                  <TextInput
-                    style={styles.customSkillInput}
-                    value={customSkillInput}
-                    onChangeText={setCustomSkillInput}
-                    placeholder={t('Enter skill name…')}
-                    placeholderTextColor={COLORS.textMuted}
-                    autoFocus
-                    onSubmitEditing={addCustomSkill}
-                    returnKeyType="done"
-                  />
-                  <TouchableOpacity style={styles.customSkillConfirm} onPress={addCustomSkill}>
-                    <AntDesign name="check" size={16} color="#fff" />
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.customSkillCancel}
-                    onPress={() => { setShowSkillInput(false); setCustomSkillInput(''); }}
-                  >
-                    <AntDesign name="close" size={16} color={COLORS.textMuted} />
-                  </TouchableOpacity>
-                </View>
-              ) : (
-                <TouchableOpacity style={styles.addSkillBtn} onPress={() => setShowSkillInput(true)}>
-                  <AntDesign name="plus-circle" size={20} color={COLORS.accentLight} />
-                  {/* ✅ */}
-                  <Text style={styles.addSkillBtnText}>{t('Add Custom Skill')}</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-
-            {/* ── Company Location ── */}
-            <TouchableOpacity
-              style={[styles.locationField, errors.location ? styles.inputError : null]}
-              onPress={() => router.push('./LocationPicker')}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="location-outline" size={18} color="rgba(255,255,255,0.7)" style={{ marginRight: 10 }} />
-              <Text style={[styles.locationText, !location && styles.locationPlaceholder]} numberOfLines={1}>
-                {location
-                  ? (location.address || `${location.latitude.toFixed(5)}, ${location.longitude.toFixed(5)}`)
-                  : t('Tap to set your business location')
-                }
-              </Text>
-              <Ionicons name="map-outline" size={18} color="rgba(255,255,255,0.5)" />
-            </TouchableOpacity>
-            {err('location')}
-
-            {/* ── BR Certificate ── */}
-            <View style={styles.card}>
+              {/* ── Service Information ── */}
               {/* ✅ */}
-              <Text style={styles.inputLabel}>{t('BR Certificate')}</Text>
-              <TouchableOpacity style={styles.brCertField} onPress={handleBrCertAttachment} activeOpacity={0.8}>
-                <View>
-                  <Text style={styles.attachmentLabel}>{t('Attachments')}</Text>
-                  {brCertAttachments.length === 0 ? (
-                    <Text style={styles.attachmentPlaceholder}>
-                      {t('Attach photos or PDF of your BR certificate')}
-                    </Text>
-                  ) : (
-                    <Text style={styles.attachmentCount}>
-                      {brCertAttachments.length} file{brCertAttachments.length > 1 ? 's' : ''} attached
-                    </Text>
-                  )}
-                </View>
-                <Feather name="paperclip" size={18} color={COLORS.textMuted} />
-              </TouchableOpacity>
+              <SectionHeader title={t('Service Information')} />
 
-              {brCertAttachments.length > 0 && (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.attachmentPreviewRow}>
-                  {brCertAttachments.map((file, fi) => (
-                    <View key={fi} style={styles.attachmentChip}>
-                      <Feather name="file" size={12} color={COLORS.accentLight} />
-                      <Text style={styles.attachmentChipText} numberOfLines={1}>
-                        {file.name.length > 14 ? file.name.slice(0, 12) + '…' : file.name}
-                      </Text>
-                      <TouchableOpacity onPress={() => setBrCertAttachments(prev => prev.filter((_, i) => i !== fi))}>
-                        <AntDesign name="close" size={10} color={COLORS.textMuted} />
+              {/* Category */}
+              <TouchableOpacity
+                  style={[styles.dropdown, errors.category ? styles.inputError : null]}
+                  onPress={() => setCategoryModalVisible(true)}
+                  activeOpacity={0.8}
+              >
+                <Text style={category ? styles.dropdownValue : styles.dropdownPlaceholder}>
+                  {/* ✅ */}
+                  {category || t('Category')}
+                </Text>
+                <Ionicons name="chevron-down" size={18} color={COLORS.textMuted} />
+              </TouchableOpacity>
+              {err('category')}
+
+              {/* Service Description */}
+              <View style={styles.card}>
+                {/* ✅ */}
+                <Text style={styles.inputLabel}>{t('Service Description')}</Text>
+                <TextInput
+                    style={[styles.input, styles.inputMultiline, errors.serviceDescription ? styles.inputError : null]}
+                    value={serviceDescription}
+                    onChangeText={(text) => { setServiceDescription(text); setErrors(e => ({ ...e, serviceDescription: '' })); }}
+                    placeholder={t('Enter A Description About You')}
+                    placeholderTextColor={COLORS.textMuted}
+                    multiline
+                    numberOfLines={4}
+                    textAlignVertical="top"
+                />
+                {err('serviceDescription')}
+              </View>
+
+              {/* ── Skills ── */}
+              <View style={styles.card}>
+                {/* ✅ */}
+                <Text style={[styles.inputLabel, { textAlign: 'center', marginBottom: 14 }]}>
+                  {t('Skills')}
+                </Text>
+                <View style={styles.chipsGrid}>
+                  {PREDEFINED_SKILLS.map((skill) => (
+                      <SkillChip
+                          key={skill}
+                          label={skill}
+                          selected={selectedSkills.includes(skill)}
+                          onPress={() => toggleSkill(skill)}
+                      />
+                  ))}
+                  {customSkills.map((skill) => (
+                      <SkillChip
+                          key={`custom-${skill}`}
+                          label={skill}
+                          selected={selectedSkills.includes(skill)}
+                          onPress={() => toggleSkill(skill)}
+                          onRemove={() => removeCustomSkill(skill)}
+                          isCustom
+                      />
+                  ))}
+                </View>
+
+                {showSkillInput ? (
+                    <View style={styles.customSkillRow}>
+                      <TextInput
+                          style={styles.customSkillInput}
+                          value={customSkillInput}
+                          onChangeText={setCustomSkillInput}
+                          placeholder={t('Enter skill name…')}
+                          placeholderTextColor={COLORS.textMuted}
+                          autoFocus
+                          onSubmitEditing={addCustomSkill}
+                          returnKeyType="done"
+                      />
+                      <TouchableOpacity style={styles.customSkillConfirm} onPress={addCustomSkill}>
+                        <AntDesign name="check" size={16} color="#fff" />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                          style={styles.customSkillCancel}
+                          onPress={() => { setShowSkillInput(false); setCustomSkillInput(''); }}
+                      >
+                        <AntDesign name="close" size={16} color={COLORS.textMuted} />
                       </TouchableOpacity>
                     </View>
-                  ))}
-                </ScrollView>
-              )}
-            </View>
-
-            {/* ── Work Portfolio ── */}
-            {/* ✅ */}
-            <SectionHeader title={t('Work Portfolio')} />
-
-            {works.map((work, index) => (
-              <WorkCard
-                key={index}
-                index={index}
-                work={work}
-                onChange={handleWorkChange}
-                onRemove={removeWork}
-              />
-            ))}
-
-            <TouchableOpacity style={styles.addWorkBtn} onPress={addWork} activeOpacity={0.8}>
-              {/* ✅ */}
-              <Text style={styles.addWorkBtnText}>{t('Add Another Works')}</Text>
-              <AntDesign name="plus-circle" size={18} color={COLORS.accentLight} />
-            </TouchableOpacity>
-
-            {/* ✅ */}
-            <Text style={styles.orText}>{t('Or')}</Text>
-
-            {/* Skip */}
-            <TouchableOpacity style={styles.skipBtn} activeOpacity={0.8} onPress={() => router.back()}>
-              {/* ✅ */}
-              <Text style={styles.skipBtnText}>{t('Skip')}</Text>
-            </TouchableOpacity>
-
-            <View style={{ height: 16 }} />
-
-            {/* Save Profile */}
-            <TouchableOpacity
-              style={[styles.saveBtn, isSaving && styles.saveBtnDisabled]}
-              onPress={handleSave}
-              activeOpacity={0.85}
-              disabled={isSaving}
-            >
-              {isSaving ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <>
-                  <Ionicons name="checkmark-circle-outline" size={22} color="#fff" />
-                  {/* ✅ */}
-                  <Text style={styles.saveBtnText}>{t('Save Profile')}</Text>
-                </>
-              )}
-            </TouchableOpacity>
-
-            <View style={{ height: 40 }} />
-          </ScrollView>
-        </KeyboardAvoidingView>
-
-        {/* ── Category Modal ── */}
-        <Modal
-          visible={categoryModalVisible}
-          transparent
-          animationType="slide"
-          onRequestClose={() => setCategoryModalVisible(false)}
-        >
-          <Pressable style={styles.modalOverlay} onPress={() => setCategoryModalVisible(false)}>
-            <View style={styles.modalSheet}>
-              <View style={styles.modalHandle} />
-              {/* ✅ */}
-              <Text style={styles.modalTitle}>{t('Select Category')}</Text>
-              {categories.length === 0 ? (
-                <ActivityIndicator color={COLORS.accentLight} style={{ marginTop: 20 }} />
-              ) : (
-                <FlatList
-                  data={categories}
-                  keyExtractor={(item) => item.id}
-                  renderItem={({ item }) => (
-                    <TouchableOpacity
-                      style={[styles.modalItem, category === item.name && styles.modalItemSelected]}
-                      onPress={() => {
-                        setCategory(item.name);
-                        setCategoryId(item.id);
-                        setCategoryModalVisible(false);
-                        setErrors(e => ({ ...e, category: '' }));
-                      }}
-                    >
-                      <Text style={[
-                        styles.modalItemText,
-                        category === item.name && styles.modalItemTextSelected,
-                      ]}>
-                        {item.name}
-                      </Text>
-                      {category === item.name && (
-                        <Ionicons name="checkmark-circle" size={18} color={COLORS.accent} />
-                      )}
+                ) : (
+                    <TouchableOpacity style={styles.addSkillBtn} onPress={() => setShowSkillInput(true)}>
+                      <AntDesign name="plus-circle" size={20} color={COLORS.accentLight} />
+                      {/* ✅ */}
+                      <Text style={styles.addSkillBtnText}>{t('Add Custom Skill')}</Text>
                     </TouchableOpacity>
-                  )}
-                  ItemSeparatorComponent={() => <View style={styles.modalDivider} />}
-                />
-              )}
-            </View>
-          </Pressable>
-        </Modal>
-      </SafeAreaView>
-    </LinearGradient>
+                )}
+              </View>
+
+              {/* ── Company Location ── */}
+              <TouchableOpacity
+                  style={[styles.locationField, errors.location ? styles.inputError : null]}
+                  onPress={() => router.push('./LocationPicker')}
+                  activeOpacity={0.8}
+              >
+                <Ionicons name="location-outline" size={18} color="rgba(255,255,255,0.7)" style={{ marginRight: 10 }} />
+                <Text style={[styles.locationText, !location && styles.locationPlaceholder]} numberOfLines={1}>
+                  {location
+                      ? (location.address || `${location.latitude.toFixed(5)}, ${location.longitude.toFixed(5)}`)
+                      : t('Tap to set your business location')
+                  }
+                </Text>
+                <Ionicons name="map-outline" size={18} color="rgba(255,255,255,0.5)" />
+              </TouchableOpacity>
+              {err('location')}
+
+              {/* ── BR Certificate ── */}
+              <View style={styles.card}>
+                {/* ✅ */}
+                <Text style={styles.inputLabel}>{t('BR Certificate')}</Text>
+                <TouchableOpacity style={styles.brCertField} onPress={handleBrCertAttachment} activeOpacity={0.8}>
+                  <View>
+                    <Text style={styles.attachmentLabel}>{t('Attachments')}</Text>
+                    {brCertAttachments.length === 0 ? (
+                        <Text style={styles.attachmentPlaceholder}>
+                          {t('Attach photos or PDF of your BR certificate')}
+                        </Text>
+                    ) : (
+                        <Text style={styles.attachmentCount}>
+                          {brCertAttachments.length} file{brCertAttachments.length > 1 ? 's' : ''} attached
+                        </Text>
+                    )}
+                  </View>
+                  <Feather name="paperclip" size={18} color={COLORS.textMuted} />
+                </TouchableOpacity>
+
+                {brCertAttachments.length > 0 && (
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.attachmentPreviewRow}>
+                      {brCertAttachments.map((file, fi) => (
+                          <View key={fi} style={styles.attachmentChip}>
+                            <Feather name="file" size={12} color={COLORS.accentLight} />
+                            <Text style={styles.attachmentChipText} numberOfLines={1}>
+                              {file.name.length > 14 ? file.name.slice(0, 12) + '…' : file.name}
+                            </Text>
+                            <TouchableOpacity onPress={() => setBrCertAttachments(prev => prev.filter((_, i) => i !== fi))}>
+                              <AntDesign name="close" size={10} color={COLORS.textMuted} />
+                            </TouchableOpacity>
+                          </View>
+                      ))}
+                    </ScrollView>
+                )}
+              </View>
+
+              {/* ── Work Portfolio ── */}
+              {/* ✅ */}
+              <SectionHeader title={t('Work Portfolio')} />
+
+              {works.map((work, index) => (
+                  <WorkCard
+                      key={index}
+                      index={index}
+                      work={work}
+                      onChange={handleWorkChange}
+                      onRemove={removeWork}
+                  />
+              ))}
+
+              <TouchableOpacity style={styles.addWorkBtn} onPress={addWork} activeOpacity={0.8}>
+                {/* ✅ */}
+                <Text style={styles.addWorkBtnText}>{t('Add Another Works')}</Text>
+                <AntDesign name="plus-circle" size={18} color={COLORS.accentLight} />
+              </TouchableOpacity>
+
+              {/* ✅ */}
+              <Text style={styles.orText}>{t('Or')}</Text>
+
+              {/* Skip */}
+              <TouchableOpacity style={styles.skipBtn} activeOpacity={0.8} onPress={() => router.back()}>
+                {/* ✅ */}
+                <Text style={styles.skipBtnText}>{t('Skip')}</Text>
+              </TouchableOpacity>
+
+              <View style={{ height: 16 }} />
+
+              {/* Save Profile */}
+              <TouchableOpacity
+                  style={[styles.saveBtn, isSaving && styles.saveBtnDisabled]}
+                  onPress={handleSave}
+                  activeOpacity={0.85}
+                  disabled={isSaving}
+              >
+                {isSaving ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                    <>
+                      <Ionicons name="checkmark-circle-outline" size={22} color="#fff" />
+                      {/* ✅ */}
+                      <Text style={styles.saveBtnText}>{t('Save Profile')}</Text>
+                    </>
+                )}
+              </TouchableOpacity>
+              <Pressable style={styles.logoutButton} onPress={handleLogout}>
+                <Text style={styles.logoutText}>
+                  Logout
+                </Text>
+              </Pressable>
+
+              <View style={{ height: 40 }} />
+            </ScrollView>
+          </KeyboardAvoidingView>
+
+          {/* ── Category Modal ── */}
+          <Modal
+              visible={categoryModalVisible}
+              transparent
+              animationType="slide"
+              onRequestClose={() => setCategoryModalVisible(false)}
+          >
+            <Pressable style={styles.modalOverlay} onPress={() => setCategoryModalVisible(false)}>
+              <View style={styles.modalSheet}>
+                <View style={styles.modalHandle} />
+                {/* ✅ */}
+                <Text style={styles.modalTitle}>{t('Select Category')}</Text>
+                {categories.length === 0 ? (
+                    <ActivityIndicator color={COLORS.accentLight} style={{ marginTop: 20 }} />
+                ) : (
+                    <FlatList
+                        data={categories}
+                        keyExtractor={(item) => item.id}
+                        renderItem={({ item }) => (
+                            <TouchableOpacity
+                                style={[styles.modalItem, category === item.name && styles.modalItemSelected]}
+                                onPress={() => {
+                                  setCategory(item.name);
+                                  setCategoryId(item.id);
+                                  setCategoryModalVisible(false);
+                                  setErrors(e => ({ ...e, category: '' }));
+                                }}
+                            >
+                              <Text style={[
+                                styles.modalItemText,
+                                category === item.name && styles.modalItemTextSelected,
+                              ]}>
+                                {item.name}
+                              </Text>
+                              {category === item.name && (
+                                  <Ionicons name="checkmark-circle" size={18} color={COLORS.accent} />
+                              )}
+                            </TouchableOpacity>
+                        )}
+                        ItemSeparatorComponent={() => <View style={styles.modalDivider} />}
+                    />
+                )}
+              </View>
+            </Pressable>
+          </Modal>
+        </SafeAreaView>
+      </LinearGradient>
   );
 }
 
@@ -1326,4 +1351,14 @@ const styles = StyleSheet.create({
   modalItemText: { color: 'rgba(255,255,255,0.70)', fontSize: 15 },
   modalItemTextSelected: { color: '#FFFFFF', fontWeight: '700' },
   modalDivider: { height: 1, backgroundColor: 'rgba(255,255,255,0.12)' },
+
+
+  // Logout Button
+  logoutButton: {
+    borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.5)',
+    borderRadius: 30, height: 56,
+    justifyContent: 'center', alignItems: 'center',
+    backgroundColor: 'transparent',
+  },
+  logoutText: { color: '#FFF', fontSize: 16, fontWeight: '700', letterSpacing: 0.5 },
 });

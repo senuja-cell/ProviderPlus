@@ -85,8 +85,7 @@ export const loginUser = async(data: LoginData): Promise<AuthResponse> => {
 // THIS IS FOR LOGOUT
 export const logoutUser = async(): Promise<void> => {
     try{
-        await AsyncStorage.removeItem(TOKEN_KEY);
-        await AsyncStorage.removeItem(USER_KEY);
+        await AsyncStorage.multiRemove([TOKEN_KEY, USER_KEY, 'userRole', 'userId']);
     }
     catch(error){
         console.error("error during logout: ", error);
@@ -129,6 +128,3 @@ export  const isLoggedIn = async(): Promise<boolean> => {
         return false;
     }
 }
-
-
-
