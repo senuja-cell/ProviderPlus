@@ -15,9 +15,12 @@ jobs:
         working-directory: MobileApp
 
     steps:
+      # ─── 1. CHECKOUT ────────────────────────────────────────────────────────
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # ─── 2. NODE SETUP ──────────────────────────────────────────────────────
+      # Must be 20+ — toReversed() used by metro-config requires it
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -25,38 +28,79 @@ jobs:
           cache: 'npm'
           cache-dependency-path: MobileApp/package-lock.json
 
+      # ─── 3. JAVA SETUP ──────────────────────────────────────────────────────
+      # Java 17 is required by React Native's Gradle build system
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
 
+      # ─── 4. ANDROID SDK ─────────────────────────────────────────────────────
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
+      # ─── 5. GRADLE MEMORY ───────────────────────────────────────────────────
+      # Release builds are memory intensive — 4GB heap prevents OutOfMemoryError
+      - name: Configure Gradle memory
+        run: |
+          mkdir -p ~/.gradle
+          echo "org.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=512m -XX:+HeapDumpOnOutOfMemoryError" >> ~/.gradle/gradle.properties
+          echo "org.gradle.daemon=false" >> ~/.gradle/gradle.properties
+          echo "org.gradle.parallel=false" >> ~/.gradle/gradle.properties
+        working-directory: ${{ github.workspace }}
+
+      # ─── 6. DEPENDENCIES ────────────────────────────────────────────────────
       - name: Install dependencies
         run: npm install
 
+      # ─── 7. EXPO PREBUILD ───────────────────────────────────────────────────
+      # Generates the android/ folder with API keys injected
       - name: Prebuild Expo
         run: CI=1 npx expo prebuild --platform android --clean
         env:
           GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
           GOOGLE_WEB_CLIENT_ID: ${{ secrets.GOOGLE_WEB_CLIENT_ID }}
 
+      # ─── 8. GRADLEW PERMISSIONS ─────────────────────────────────────────────
+      # Linux requires explicit execute permission on gradlew
       - name: Make gradlew executable
         run: chmod +x android/gradlew
 
-      - name: Generate debug keystore for signing
+      # ─── 9. SIGNING KEYSTORE ────────────────────────────────────────────────
+      # Generates a debug keystore for signing the release APK
+      # This is fine for testing — NOT for Play Store submission
+      - name: Generate signing keystore
         run: |
           mkdir -p ~/.android
-          keytool -genkey -v -keystore ~/.android/debug.keystore \
-            -alias androiddebugkey -keyalg RSA -keysize 2048 \
-            -validity 10000 -storepass android -keypass android \
+          keytool -genkey -v \
+            -keystore ~/.android/debug.keystore \
+            -alias androiddebugkey \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -storepass android \
+            -keypass android \
             -dname "CN=Android Debug,O=Android,C=US"
 
+      # ─── 10. INJECT SIGNING CONFIG INTO GRADLE ──────────────────────────────
+      # Tells the release build where to find the keystore
+      - name: Configure release signing
+        run: |
+          cat >> android/gradle.properties << EOF
+          MYAPP_UPLOAD_STORE_FILE=$HOME/.android/debug.keystore
+          MYAPP_UPLOAD_KEY_ALIAS=androiddebugkey
+          MYAPP_UPLOAD_STORE_PASSWORD=android
+          MYAPP_UPLOAD_KEY_PASSWORD=android
+          EOF
+
+      # ─── 11. BUILD ──────────────────────────────────────────────────────────
       - name: Build Release APK
         run: cd android && ./gradlew assembleRelease --no-daemon
+        env:
+          GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=512m"
 
+      # ─── 12. UPLOAD ARTIFACT ────────────────────────────────────────────────
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
