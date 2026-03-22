@@ -1,9 +1,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {Platform} from 'react-native';
 import {LAPTOP_IP} from './apiClient'
 
+const IS_LOCAL = false;
 
-const WS_BASE_URL = `ws://${LAPTOP_IP}:8001/api/messaging/ws`;
+const WS_BASE_URL = IS_LOCAL
+    ? `ws://${LAPTOP_IP}:8001/api/messaging/ws`
+    : `wss://providerplus-production.up.railway.app/api/messaging/ws`;
 
 // TYPES
 export interface Message{
@@ -146,5 +148,3 @@ class WebSocketService {
 }
 
 export const wsService = new WebSocketService();
-
-

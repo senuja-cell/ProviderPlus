@@ -1,18 +1,14 @@
 import axios from 'axios';
-import { Platform } from 'react-native';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // --- CONFIGURATION ---
-// 1. REPLACE THIS with the IP you found in Step 1
-// This is safe for dev because it's a local address.
-export const LAPTOP_IP = '192.168.1.5'; //
+export const LAPTOP_IP = '192.168.1.5';
 
-// 2. LOGIC:
-// - Android Emulator uses '10.0.2.2' (special alias for host loopback).
-// - Physical Device / iOS uses your real LAN IP.
-const BASE_URL = Platform.OS === 'android' && !Platform.isTV
+const IS_LOCAL = false;
+
+const BASE_URL = IS_LOCAL
     ? `http://${LAPTOP_IP}:8001/api`
-    : `http://${LAPTOP_IP}:8001/api`;
+    : `https://providerplus-production.up.railway.app/api`;
 
 console.log("🔗 Connecting to Backend at:", BASE_URL);
 
