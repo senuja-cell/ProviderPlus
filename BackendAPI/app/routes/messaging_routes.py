@@ -392,3 +392,16 @@ async def get_provider_bookings(current_user: User = Depends(get_current_user)):
         ))
 
     return result
+
+
+@router.patch("/booking/{booking_id}/complete")
+async def complete_booking(
+        booking_id: str,
+        current_user: User = Depends(get_current_user),
+):
+    booking = await Booking.get(booking_id)
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    booking.status = BookingStatus.completed
+    await booking.save()
+    return {"message": "Booking marked as completed"}

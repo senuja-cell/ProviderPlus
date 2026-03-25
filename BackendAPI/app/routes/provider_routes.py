@@ -26,16 +26,10 @@ class ProviderProfileUpdate(BaseModel):
 
 
 # ─── Provider auth helper ─────────────────────────────────────────────────────
-# Same pattern as get_current_admin in admin_provider_routes.py
-# Gets the logged-in User, then finds their Provider document by user_id
 
 async def get_current_provider(
-    current_user: User = Depends(get_current_user),
+        current_user: User = Depends(get_current_user),
 ) -> Provider:
-    """
-    Gets the logged-in user then finds their Provider document via user_id.
-    Same pattern used in admin_provider_routes.py.
-    """
     provider = await Provider.find_one(Provider.user_id == str(current_user.id))
 
     if not provider:
@@ -51,9 +45,9 @@ async def get_current_provider(
 
 @router.get("/providers/category/{slug}")
 async def find_providers_by_category(
-    slug: str,
-    lat: Optional[float] = None,
-    long: Optional[float] = None,
+        slug: str,
+        lat: Optional[float] = None,
+        long: Optional[float] = None,
 ):
     providers = await get_providers_by_slug(slug, user_lat=lat, user_long=long)
     if not providers:
@@ -82,20 +76,32 @@ async def get_category_names_endpoint():
 
 @router.get("/provider/me/profile")
 async def get_my_profile(
-    current_provider: Provider = Depends(get_current_provider),
+        current_provider: Provider = Depends(get_current_provider),
 ):
     """
     Returns the full profile of the logged-in provider.
-    Called by ProviderProfileEdit on mount to pre-fill all fields.
-
-    Frontend: GET /api/provider/me/profile
-    Headers:  Authorization: Bearer <token>
+    Includes completed_jobs (count of completed bookings) and created_at.
     """
     category = await current_provider.category.fetch()
     docs = getattr(current_provider, "business_documents", []) or []
 
-    # Get email from the linked User document
     user = await User.find_one(User.id == current_provider.user_id)
+
+    # ── Count completed bookings for this provider ────────────────────────────
+    # Imported lazily to avoid circular import issues
+    completed_jobs = 0
+    try:
+        from ..models.booking_model import Booking
+        completed_jobs = await Booking.find(
+            Booking.provider_id == str(current_provider.id),
+            Booking.status == "completed",
+            ).count()
+    except Exception:
+        # Booking model not available or query failed — default to 0
+        completed_jobs = 0
+
+    # ── Format member since year from created_at ──────────────────────────────
+    member_since = str(current_provider.created_at.year) if current_provider.created_at else None
 
     return {
         "id":               str(current_provider.id),
@@ -118,25 +124,19 @@ async def get_my_profile(
         "verified_documents": sum(1 for d in docs if d.get("status") == "verified"),
         "pending_documents":  sum(1 for d in docs if d.get("status") == "pending"),
         "rejected_documents": sum(1 for d in docs if d.get("status") == "rejected"),
+        # ── New fields ────────────────────────────────────────────────────────
+        "completed_jobs": completed_jobs,
+        "member_since":   member_since,
     }
 
 
 @router.patch("/provider/me/profile")
 async def update_my_profile(
-    body: ProviderProfileUpdate,
-    current_provider: Provider = Depends(get_current_provider),
+        body: ProviderProfileUpdate,
+        current_provider: Provider = Depends(get_current_provider),
 ):
-    """
-    Updates the provider's text fields (PATCH — only sent fields are updated).
-
-    Frontend: PATCH /api/provider/me/profile
-    Headers:  Authorization: Bearer <token>
-    Body (JSON): name, phone_number, description, category_id, tags,
-                 latitude, longitude
-    """
     update_data = body.model_dump(exclude_none=True)
 
-    # Category change — fetch new Category document by ID
     if "category_id" in update_data:
         try:
             new_category = await Category.get(update_data.pop("category_id"))
@@ -144,7 +144,6 @@ async def update_my_profile(
             raise HTTPException(status_code=404, detail="Category not found")
         current_provider.category = new_category
 
-    # Location — both lat and lng must come together
     lat = update_data.pop("latitude", None)
     lng = update_data.pop("longitude", None)
     if lat is not None and lng is not None:
@@ -153,7 +152,6 @@ async def update_my_profile(
             "coordinates": [lng, lat],
         }
 
-    # Apply remaining scalar fields (name, phone_number, description, tags)
     for field, value in update_data.items():
         setattr(current_provider, field, value)
 
@@ -163,16 +161,9 @@ async def update_my_profile(
 
 @router.post("/provider/me/profile-image")
 async def upload_profile_image(
-    file: UploadFile = File(...),
-    current_provider: Provider = Depends(get_current_provider),
+        file: UploadFile = File(...),
+        current_provider: Provider = Depends(get_current_provider),
 ):
-    """
-    Uploads a new profile picture to Cloudinary.
-
-    Frontend: POST /api/provider/me/profile-image
-    Headers:  Authorization: Bearer <token>
-    Body:     multipart/form-data → field name: "file"
-    """
     if not file.content_type or not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="File must be an image")
 
@@ -185,17 +176,9 @@ async def upload_profile_image(
 
 @router.post("/provider/me/portfolio-images")
 async def upload_portfolio_images(
-    files: List[UploadFile] = File(...),
-    current_provider: Provider = Depends(get_current_provider),
+        files: List[UploadFile] = File(...),
+        current_provider: Provider = Depends(get_current_provider),
 ):
-    """
-    Uploads portfolio images to Cloudinary.
-    New URLs are appended to the existing list.
-
-    Frontend: POST /api/provider/me/portfolio-images
-    Headers:  Authorization: Bearer <token>
-    Body:     multipart/form-data → field name: "files" (multiple allowed)
-    """
     for f in files:
         if not f.content_type or not f.content_type.startswith("image/"):
             raise HTTPException(
@@ -217,19 +200,10 @@ async def upload_portfolio_images(
 
 @router.post("/provider/me/documents")
 async def upload_identity_documents(
-    files: List[UploadFile] = File(...),
-    document_type: str = Form(...),
-    current_provider: Provider = Depends(get_current_provider),
+        files: List[UploadFile] = File(...),
+        document_type: str = Form(...),
+        current_provider: Provider = Depends(get_current_provider),
 ):
-    """
-    Uploads NIC images or BR certificate files to GridFS for admin review.
-
-    Frontend: POST /api/provider/me/documents
-    Headers:  Authorization: Bearer <token>
-    Body:     multipart/form-data
-                  document_type: "nic" | "br_certificate"
-                  files: [<image or PDF>, ...]
-    """
     allowed_types = {"nic", "br_certificate"}
     if document_type not in allowed_types:
         raise HTTPException(

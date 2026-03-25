@@ -14,7 +14,7 @@ export const sendChatMessage = async (
 ): Promise<ChatResponse> => {
     try{
         console.log("sending message");
-        const response = await apiClient.post('/ai-chat', {
+        const response = await apiClient.post('/ai-chat/', {
             user_text: userText,
             context_history: history,
         });

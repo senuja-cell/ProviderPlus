@@ -2,7 +2,7 @@ import axios from 'axios';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // --- CONFIGURATION ---
-export const LAPTOP_IP = '192.168.1.5';
+export const LAPTOP_IP = '192.168.1.4';
 
 const IS_LOCAL = false;
 

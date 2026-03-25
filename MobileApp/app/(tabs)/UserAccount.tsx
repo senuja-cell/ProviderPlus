@@ -11,12 +11,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { getUserProfile } from '../services/userService';
 
 const SETTINGS_ITEMS = [
-    { id: '1', icon: '✏️', label: 'Edit Profile',    labelSi: 'පැතිකඩ සංස්කරණය', route: '/CustomerAccountEdit' },
-    { id: '2', icon: '📍', label: 'Saved Addresses', labelSi: 'සුරකින ලද ලිපින',   route: null },
-    { id: '3', icon: '💳', label: 'Payment',         labelSi: 'ගෙවීම',              route: null },
-    { id: '4', icon: '🔔', label: 'Notifications',   labelSi: 'දැනුම්දීම්',         route: null },
-    { id: '5', icon: '❓', label: 'Help & Support',  labelSi: 'උදවු සහ සහාය',       route: null },
-    { id: '6', icon: 'ℹ️', label: 'About Provider+', labelSi: 'Provider+ ගැන',       route: null },
+    { id: '1', icon: '✏️', label: 'Edit Profile',    labelSi: 'පැතිකඩ සංස්කරණය', route: '/CustomerAccountEdit' }
 ];
 
 export default function UserAccount() {

@@ -2,6 +2,8 @@ import os
 import traceback
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse
+
+from app.routes import rating_router
 from app.routes import chatbot_routes, analysis_routes, auth_routes, provider_routes, geolocation_routes
 from app.core.database import init_db
 from fastapi.exceptions import RequestValidationError
@@ -133,6 +135,8 @@ app.include_router(payment_routes.router, prefix="/api/payment", tags=["Payment"
 # Messaging Routes
 app.include_router(messaging_routes.router, prefix="/api", tags=["Messaging"])
 app.include_router(dashboard_router)
+app.include_router(rating_router.router, prefix="/api")
+
 
 
 # ==================== ROOT ENDPOINT ====================

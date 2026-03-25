@@ -14,44 +14,12 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons, Feather, MaterialIcons } from '@expo/vector-icons';
+import { Ionicons, Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useRoleBack } from '../hooks/useBackNavigation';
+import { getMyProfile, ProviderData } from '../services/providerProfileService';
+
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-interface WorkPortfolioItem {
-  id: string;
-  name: string;
-  description: string;
-  imageUri?: string;
-}
-
-interface Review {
-  id: string;
-  reviewerName: string;
-  reviewerAvatar?: string;
-  rating: number;
-  comment: string;
-  date: string;
-}
-
-interface ProviderData {
-  id: string;
-  name: string;
-  photoUri?: string;
-  category: string;
-  location: string;
-  rating: number;
-  reviewCount: number;
-  jobsCompleted: number;
-  memberSince: string;
-  isVerified: boolean;
-  skills: string[];
-  portfolio: WorkPortfolioItem[];
-  reviews: Review[];
-}
 
 // ─── Theme ────────────────────────────────────────────────────────────────────
 
@@ -71,447 +39,356 @@ const COLORS = {
   danger: '#FF4D4F',
 };
 
-// ─── Mock data — replace with your real API call ──────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const MOCK_PROVIDER: ProviderData = {
-  id: '1',
-  name: 'Nimal Chandra',
-  photoUri: undefined,
-  category: 'Electrician',
-  location: 'Colombo 07, Western Province',
-  rating: 4.8,
-  reviewCount: 64,
-  jobsCompleted: 142,
-  memberSince: '2022',
-  isVerified: true,
-  skills: [
-    'Electrical', 'Wiring', 'Solar Panels', 'CCTV',
-    'Networking', 'Lighting', 'Maintenance', 'Safety Checks',
-  ],
-  portfolio: [
-    {
-      id: '1',
-      name: 'Office Rewiring – Colombo 3',
-      description: 'Full rewiring of a 3-floor office building with new distribution boards.',
-    },
-    {
-      id: '2',
-      name: 'Solar Panel Installation',
-      description: '6kW solar system installed for a residential property in Nugegoda.',
-    },
-    {
-      id: '3',
-      name: 'CCTV Setup – Retail Store',
-      description: '16-camera HD CCTV system with remote viewing for a supermarket.',
-    },
-  ],
-  reviews: [
-    {
-      id: '1',
-      reviewerName: 'Amali Perera',
-      rating: 5,
-      comment: 'Nimal was professional, punctual and did a fantastic job. Highly recommend!',
-      date: '12 Jan 2025',
-    },
-    {
-      id: '2',
-      reviewerName: 'Roshan Silva',
-      rating: 5,
-      comment: 'Very knowledgeable and tidy. Completed the solar installation ahead of schedule.',
-      date: '3 Dec 2024',
-    },
-    {
-      id: '3',
-      reviewerName: 'Kavindi Fernando',
-      rating: 4,
-      comment: 'Good work overall, explained everything clearly. Will hire again.',
-      date: '18 Nov 2024',
-    },
-  ],
-};
+/** GeoJSON [lng, lat] → human-readable string */
+function formatLocation(
+    location: { type: string; coordinates: [number, number] } | null
+): string {
+  if (!location?.coordinates) return 'Location not set';
+  const [lng, lat] = location.coordinates;
+  return `${lat.toFixed(4)}° N, ${lng.toFixed(4)}° E`;
+}
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 const StarRow: React.FC<{ rating: number; size?: number }> = ({ rating, size = 14 }) => (
-  <View style={{ flexDirection: 'row', gap: 2 }}>
-    {[1, 2, 3, 4, 5].map((i) => (
-      <Ionicons
-        key={i}
-        name={
-          i <= Math.floor(rating)
-            ? 'star'
-            : i - rating < 1
-            ? 'star-half'
-            : 'star-outline'
-        }
-        size={size}
-        color={COLORS.gold}
-      />
-    ))}
-  </View>
+    <View style={{ flexDirection: 'row', gap: 2 }}>
+      {[1, 2, 3, 4, 5].map((i) => (
+          <Ionicons
+              key={i}
+              name={
+                i <= Math.floor(rating)
+                    ? 'star'
+                    : i - rating < 1
+                        ? 'star-half'
+                        : 'star-outline'
+              }
+              size={size}
+              color={COLORS.gold}
+          />
+      ))}
+    </View>
 );
 
 const StatItem: React.FC<{ icon: string; value: string; label: string }> = ({
-  icon, value, label,
-}) => (
-  <View style={styles.statItem}>
-    <Ionicons name={icon as any} size={22} color={COLORS.accentLight} />
-    <Text style={styles.statValue}>{value}</Text>
-    <Text style={styles.statLabel}>{label}</Text>
-  </View>
+                                                                              icon, value, label,
+                                                                            }) => (
+    <View style={styles.statItem}>
+      <Ionicons name={icon as any} size={22} color={COLORS.accentLight} />
+      <Text style={styles.statValue}>{value}</Text>
+      <Text style={styles.statLabel}>{label}</Text>
+    </View>
 );
 
 const SectionHeader: React.FC<{ title: string }> = ({ title }) => (
-  <View style={styles.sectionHeaderRow}>
-    <View style={styles.sectionLine} />
-    <Text style={styles.sectionTitle}>{title}</Text>
-    <View style={styles.sectionLine} />
-  </View>
+    <View style={styles.sectionHeaderRow}>
+      <View style={styles.sectionLine} />
+      <Text style={styles.sectionTitle}>{title}</Text>
+      <View style={styles.sectionLine} />
+    </View>
 );
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function ProviderProfile(): React.JSX.Element {
   useRoleBack();
-  const [provider, setProvider]               = useState<ProviderData | null>(null);
-  const [loading, setLoading]                 = useState<boolean>(true);
-  const [showAllReviews, setShowAllReviews]   = useState<boolean>(false);
+  const [provider, setProvider]                 = useState<ProviderData | null>(null);
+  const [loading, setLoading]                   = useState<boolean>(true);
+  const [error, setError]                       = useState<string | null>(null);
   const [showAllPortfolio, setShowAllPortfolio] = useState<boolean>(false);
-  const [isSinhala, setIsSinhala]             = useState<boolean>(false);
+  const [isSinhala, setIsSinhala]               = useState<boolean>(false);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
-  // ── Fetch provider data ────────────────────────────────────────────────────
+  // ── Fetch real provider profile ────────────────────────────────────────────
   useEffect(() => {
-    // TODO: replace with real API call
-    // e.g. fetchMyProviderProfile(token).then(setProvider)
-    const timer = setTimeout(() => {
-      setProvider(MOCK_PROVIDER);
-      setLoading(false);
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 350,
-        useNativeDriver: true,
-      }).start();
-    }, 500);
-    return () => clearTimeout(timer);
+    (async () => {
+      try {
+        const data = await getMyProfile();
+        setProvider(data);
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 350,
+          useNativeDriver: true,
+        }).start();
+      } catch (e: any) {
+        setError(e?.response?.data?.detail ?? 'Could not load profile. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, []);
 
   // ── Loading state ─────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <LinearGradient colors={[COLORS.gradientTop, COLORS.gradientBot]} style={styles.gradient}>
-        <SafeAreaView style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#fff" />
-          <Text style={styles.loadingText}>Loading your profile…</Text>
-        </SafeAreaView>
-      </LinearGradient>
+        <LinearGradient colors={[COLORS.gradientTop, COLORS.gradientBot]} style={styles.gradient}>
+          <SafeAreaView style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#fff" />
+            <Text style={styles.loadingText}>Loading your profile…</Text>
+          </SafeAreaView>
+        </LinearGradient>
     );
   }
 
-  if (!provider) {
+  if (error || !provider) {
     return (
-      <LinearGradient colors={[COLORS.gradientTop, COLORS.gradientBot]} style={styles.gradient}>
-        <SafeAreaView style={styles.loadingContainer}>
-          <Ionicons name="alert-circle-outline" size={48} color={COLORS.textMuted} />
-          <Text style={styles.loadingText}>Could not load profile.</Text>
-        </SafeAreaView>
-      </LinearGradient>
+        <LinearGradient colors={[COLORS.gradientTop, COLORS.gradientBot]} style={styles.gradient}>
+          <SafeAreaView style={styles.loadingContainer}>
+            <Ionicons name="alert-circle-outline" size={48} color={COLORS.textMuted} />
+            <Text style={styles.loadingText}>{error ?? 'Could not load profile.'}</Text>
+            <TouchableOpacity
+                style={styles.retryBtn}
+                onPress={() => { setLoading(true); setError(null); }}
+            >
+              <Text style={styles.retryBtnText}>Try Again</Text>
+            </TouchableOpacity>
+          </SafeAreaView>
+        </LinearGradient>
     );
   }
 
-  const visibleReviews = showAllReviews
-    ? provider.reviews
-    : provider.reviews.slice(0, 2);
+  // ─── Derived display values ────────────────────────────────────────────────
+  const portfolioImages = provider.portfolio_images ?? [];
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <LinearGradient
-      colors={[COLORS.gradientTop, COLORS.gradientBot]}
-      style={styles.gradient}
-      start={{ x: 0.5, y: 0 }}
-      end={{ x: 0.5, y: 1 }}
-    >
-      <StatusBar barStyle="light-content" backgroundColor="transparent" />
+      <LinearGradient
+          colors={[COLORS.gradientTop, COLORS.gradientBot]}
+          style={styles.gradient}
+          start={{ x: 0.5, y: 0 }}
+          end={{ x: 0.5, y: 1 }}
+      >
+        <StatusBar barStyle="light-content" backgroundColor="transparent" />
 
-      {/* ── Header ── */}
-      <SafeAreaView edges={['top']}>
-        <View style={styles.header}>
-          {/* Left: back + logo */}
-          <View style={styles.headerLeft}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.headerBack}>
-              <Ionicons name="chevron-back" size={22} color={COLORS.text} />
-            </TouchableOpacity>
-            <Image
-              source={require('../../assets/images/provider-logo.png')}
-              style={styles.headerLogo}
-              resizeMode="contain"
-            />
-          </View>
-
-          <Text style={styles.headerTitle}>My Profile</Text>
-
-          {/* Right: language toggle */}
-          <View style={styles.languageToggle}>
-            <Text style={[styles.langLabel, !isSinhala && styles.langLabelActive]}>ENG</Text>
-            <Text style={styles.langDivider}>|</Text>
-            <Text style={[styles.langLabel, isSinhala && styles.langLabelActive]}>සිං</Text>
-            <Switch
-              value={isSinhala}
-              onValueChange={() => setIsSinhala(v => !v)}
-              trackColor={{ false: 'rgba(255,255,255,0.3)', true: '#FF6B35' }}
-              thumbColor={isSinhala ? '#fff' : '#f0f0f0'}
-              ios_backgroundColor="rgba(255,255,255,0.3)"
-              style={styles.switchStyle}
-            />
-          </View>
-        </View>
-      </SafeAreaView>
-
-      <Animated.View style={[{ flex: 1 }, { opacity: fadeAnim }]}>
-        <ScrollView
-          style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-
-          {/* ── Hero Card ── */}
-          <View style={styles.heroCard}>
-            {/* Decorative background circles */}
-            <View style={styles.heroCircle1} />
-            <View style={styles.heroCircle2} />
-
-            {/* Edit button — top right of card */}
-            <TouchableOpacity
-              style={styles.editBtn}
-              onPress={() => router.push('../ProviderProfileEdit')}
-              activeOpacity={0.85}
-            >
-              <Feather name="edit-2" size={14} color="#fff" />
-              <Text style={styles.editBtnText}>Edit Profile</Text>
-            </TouchableOpacity>
-
-            {/* Avatar */}
-            <View style={styles.avatarWrapper}>
-              {provider.photoUri ? (
-                <Image source={{ uri: provider.photoUri }} style={styles.avatar} />
-              ) : (
-                <View style={styles.avatarPlaceholder}>
-                  <Ionicons name="person" size={44} color="rgba(255,255,255,0.4)" />
-                </View>
-              )}
-              {provider.isVerified && (
-                <View style={styles.verifiedBadge}>
-                  <Ionicons name="checkmark-circle" size={24} color={COLORS.success} />
-                </View>
-              )}
-            </View>
-
-            {/* Name + verified */}
-            <View style={styles.heroNameRow}>
-              <Text style={styles.heroName}>{provider.name}</Text>
-              {provider.isVerified && (
-                <View style={styles.verifiedTag}>
-                  <Text style={styles.verifiedTagText}>✓ Verified</Text>
-                </View>
-              )}
-            </View>
-
-            {/* Category */}
-            <Text style={styles.heroCategory}>{provider.category}</Text>
-
-            {/* Location */}
-            <View style={styles.heroLocationRow}>
-              <Ionicons name="location-outline" size={13} color={COLORS.textMuted} />
-              <Text style={styles.heroLocation}>{provider.location}</Text>
-            </View>
-
-            {/* Member since */}
-            <View style={styles.memberSinceRow}>
-              <Ionicons name="calendar-outline" size={13} color={COLORS.textMuted} />
-              <Text style={styles.memberSinceText}>Member since {provider.memberSince}</Text>
-            </View>
-          </View>
-
-          {/* ── Stats Bar ── */}
-          <View style={styles.statsCard}>
-            <StatItem
-              icon="star"
-              value={provider.rating.toFixed(1)}
-              label="Rating"
-            />
-            <View style={styles.statDivider} />
-            <StatItem
-              icon="hammer-outline"
-              value={`${provider.jobsCompleted}`}
-              label="Jobs Done"
-            />
-            <View style={styles.statDivider} />
-            <StatItem
-              icon="chatbubble-ellipses-outline"
-              value={`${provider.reviewCount}`}
-              label="Reviews"
-            />
-          </View>
-
-          {/* ── Rating Row ── */}
-          <View style={styles.ratingRow}>
-            <Text style={styles.ratingBigNum}>{provider.rating.toFixed(1)}</Text>
-            <View style={styles.ratingRightCol}>
-              <StarRow rating={provider.rating} size={18} />
-              <Text style={styles.ratingSubText}>
-                Based on {provider.reviewCount} customer reviews
-              </Text>
-            </View>
-          </View>
-
-          {/* ── Skills ── */}
-          <SectionHeader title="Skills" />
-          <View style={styles.skillsCard}>
-            {provider.skills.length > 0 ? (
-              provider.skills.map((skill) => (
-                <View key={skill} style={styles.skillChip}>
-                  <Text style={styles.skillChipText}>{skill}</Text>
-                </View>
-              ))
-            ) : (
-              <Text style={styles.emptyText}>No skills added yet</Text>
-            )}
-          </View>
-
-          {/* ── Work Portfolio ── */}
-          <SectionHeader title="Work Portfolio" />
-          {provider.portfolio.length > 0 ? (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.portfolioScroll}
-            >
-              {(showAllPortfolio ? provider.portfolio : provider.portfolio.slice(0, 3)).map((item) => (
-                <View key={item.id} style={styles.portfolioCard}>
-                  {item.imageUri ? (
-                    <Image
-                      source={{ uri: item.imageUri }}
-                      style={styles.portfolioImage}
-                    />
-                  ) : (
-                    <View style={styles.portfolioImagePlaceholder}>
-                      <Feather name="briefcase" size={30} color="rgba(255,255,255,0.25)" />
-                    </View>
-                  )}
-                  <View style={styles.portfolioInfo}>
-                    <Text style={styles.portfolioName} numberOfLines={1}>
-                      {item.name}
-                    </Text>
-                    <Text style={styles.portfolioDesc} numberOfLines={2}>
-                      {item.description}
-                    </Text>
-                  </View>
-                </View>
-              ))}
-
-
-              {/* View All card — scrolls into view at the end */}
-              {provider.portfolio.length > 3 && (
-                <TouchableOpacity
-                  style={styles.portfolioViewAllCard}
-                  onPress={() => setShowAllPortfolio(v => !v)}
-                  activeOpacity={0.8}
-                >
-                  <Ionicons
-                    name={showAllPortfolio ? 'chevron-back-circle-outline' : 'grid-outline'}
-                    size={30}
-                    color={COLORS.accentLight}
-                  />
-                  <Text style={styles.portfolioViewAllText}>
-                    {showAllPortfolio ? 'Show\nLess' : `View\nAll`}
-                  </Text>
-                  {!showAllPortfolio && (
-                    <Text style={styles.portfolioViewAllCount}>
-                      {provider.portfolio.length} works
-                    </Text>
-                  )}
-                </TouchableOpacity>
-              )}
-            </ScrollView>
-          ) : (
-            <TouchableOpacity
-              style={styles.emptyPortfolioBtn}
-              onPress={() => router.push('../ProviderProfiledit')}
-            >
-              <Feather name="plus-circle" size={22} color={COLORS.accentLight} />
-              <Text style={styles.emptyPortfolioBtnText}>Add your first work</Text>
-            </TouchableOpacity>
-          )}
-
-          {/* ── Reviews ── */}
-          <SectionHeader title="Reviews Received" />
-          {provider.reviews.length > 0 ? (
-            <>
-              {visibleReviews.map((review) => (
-                <View key={review.id} style={styles.reviewCard}>
-                  {/* Reviewer header */}
-                  <View style={styles.reviewHeader}>
-                    <View style={styles.reviewAvatar}>
-                      {review.reviewerAvatar ? (
-                        <Image
-                          source={{ uri: review.reviewerAvatar }}
-                          style={styles.reviewAvatarImg}
-                        />
-                      ) : (
-                        <Text style={styles.reviewAvatarInitial}>
-                          {review.reviewerName.charAt(0).toUpperCase()}
-                        </Text>
-                      )}
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.reviewerName}>{review.reviewerName}</Text>
-                      <View style={styles.reviewMeta}>
-                        <StarRow rating={review.rating} size={12} />
-                        <Text style={styles.reviewDate}>{review.date}</Text>
-                      </View>
-                    </View>
-                  </View>
-                  <Text style={styles.reviewComment}>{review.comment}</Text>
-                </View>
-              ))}
-
-              {provider.reviews.length > 2 && (
-                <TouchableOpacity
-                  style={styles.seeAllBtn}
-                  onPress={() => setShowAllReviews(v => !v)}
-                >
-                  <Text style={styles.seeAllText}>
-                    {showAllReviews
-                      ? 'Show less'
-                      : `See all ${provider.reviewCount} reviews`}
-                  </Text>
-                  <Ionicons
-                    name={showAllReviews ? 'chevron-up' : 'chevron-down'}
-                    size={14}
-                    color={COLORS.accentLight}
-                  />
-                </TouchableOpacity>
-              )}
-            </>
-          ) : (
-            <View style={styles.emptyCard}>
-              <Ionicons
-                name="chatbubble-outline"
-                size={32}
-                color={COLORS.textMuted}
+        {/* ── Header ── */}
+        <SafeAreaView edges={['top']}>
+          <View style={styles.header}>
+            {/* Left: back + logo */}
+            <View style={styles.headerLeft}>
+              <TouchableOpacity onPress={() => router.push('/ProviderDash')} style={styles.headerBack}>
+                <Ionicons name="chevron-back" size={22} color={COLORS.text} />
+              </TouchableOpacity>
+              <Image
+                  source={require('../../assets/images/provider-logo.png')}
+                  style={styles.headerLogo}
+                  resizeMode="contain"
               />
+            </View>
+
+            <Text style={styles.headerTitle}>My Profile</Text>
+
+            {/* Right: language toggle */}
+            <View style={styles.languageToggle}>
+              <Text style={[styles.langLabel, !isSinhala && styles.langLabelActive]}>ENG</Text>
+              <Text style={styles.langDivider}>|</Text>
+              <Text style={[styles.langLabel, isSinhala && styles.langLabelActive]}>සිං</Text>
+              <Switch
+                  value={isSinhala}
+                  onValueChange={() => setIsSinhala(v => !v)}
+                  trackColor={{ false: 'rgba(255,255,255,0.3)', true: '#FF6B35' }}
+                  thumbColor={isSinhala ? '#fff' : '#f0f0f0'}
+                  ios_backgroundColor="rgba(255,255,255,0.3)"
+                  style={styles.switchStyle}
+              />
+            </View>
+          </View>
+        </SafeAreaView>
+
+        <Animated.View style={[{ flex: 1 }, { opacity: fadeAnim }]}>
+          <ScrollView
+              style={styles.scroll}
+              contentContainerStyle={styles.scrollContent}
+              showsVerticalScrollIndicator={false}
+          >
+
+            {/* ── Hero Card ── */}
+            <View style={styles.heroCard}>
+              <View style={styles.heroCircle1} />
+              <View style={styles.heroCircle2} />
+
+              {/* Edit button */}
+              <TouchableOpacity
+                  style={styles.editBtn}
+                  onPress={() => router.push('../ProviderProfileEdit')}
+                  activeOpacity={0.85}
+              >
+                <Feather name="edit-2" size={14} color="#fff" />
+                <Text style={styles.editBtnText}>Edit Profile</Text>
+              </TouchableOpacity>
+
+              {/* Avatar */}
+              <View style={styles.avatarWrapper}>
+                {provider.profile_image ? (
+                    <Image source={{ uri: provider.profile_image }} style={styles.avatar} />
+                ) : (
+                    <View style={styles.avatarPlaceholder}>
+                      <Ionicons name="person" size={44} color="rgba(255,255,255,0.4)" />
+                    </View>
+                )}
+                {provider.is_verified && (
+                    <View style={styles.verifiedBadge}>
+                      <Ionicons name="checkmark-circle" size={24} color={COLORS.success} />
+                    </View>
+                )}
+              </View>
+
+              {/* Name + verified */}
+              <View style={styles.heroNameRow}>
+                <Text style={styles.heroName}>{provider.name}</Text>
+                {provider.is_verified && (
+                    <View style={styles.verifiedTag}>
+                      <Text style={styles.verifiedTagText}>✓ Verified</Text>
+                    </View>
+                )}
+              </View>
+
+              {/* Category */}
+              <Text style={styles.heroCategory}>{provider.category.name}</Text>
+
+              {/* Location */}
+              <View style={styles.heroLocationRow}>
+                <Ionicons name="location-outline" size={13} color={COLORS.textMuted} />
+                <Text style={styles.heroLocation}>{formatLocation(provider.location)}</Text>
+              </View>
+
+              {/* Member since */}
+              {provider.member_since && (
+                  <View style={styles.memberSinceRow}>
+                    <Ionicons name="calendar-outline" size={13} color={COLORS.textMuted} />
+                    <Text style={styles.memberSinceText}>Member since {provider.member_since}</Text>
+                  </View>
+              )}
+            </View>
+
+            {/* ── Stats Bar ── */}
+            <View style={styles.statsCard}>
+              {/* Rating — kept from DB as-is */}
+              <StatItem
+                  icon="star"
+                  value={provider.rating > 0 ? provider.rating.toFixed(1) : '—'}
+                  label="Rating"
+              />
+              <View style={styles.statDivider} />
+              {/* Completed jobs — real count from backend */}
+              <StatItem
+                  icon="hammer-outline"
+                  value={`${provider.completed_jobs}`}
+                  label="Jobs Done"
+              />
+              <View style={styles.statDivider} />
+              {/* Reviews — placeholder until review system is built */}
+              <StatItem
+                  icon="chatbubble-ellipses-outline"
+                  value="—"
+                  label="Reviews"
+              />
+            </View>
+
+            {/* ── Rating Row — kept from DB, reviews section deferred ── */}
+            <View style={styles.ratingRow}>
+              <Text style={styles.ratingBigNum}>
+                {provider.rating > 0 ? provider.rating.toFixed(1) : '—'}
+              </Text>
+              <View style={styles.ratingRightCol}>
+                {provider.rating > 0 ? (
+                    <StarRow rating={provider.rating} size={18} />
+                ) : (
+                    <Text style={{ color: COLORS.textMuted, fontSize: 13 }}>No rating yet</Text>
+                )}
+                <Text style={styles.ratingSubText}>
+                  Reviews coming soon
+                </Text>
+              </View>
+            </View>
+
+            {/* ── Skills ── */}
+            <SectionHeader title="Skills" />
+            <View style={styles.skillsCard}>
+              {provider.tags.length > 0 ? (
+                  provider.tags.map((skill) => (
+                      <View key={skill} style={styles.skillChip}>
+                        <Text style={styles.skillChipText}>{skill}</Text>
+                      </View>
+                  ))
+              ) : (
+                  <View style={styles.emptyCard}>
+                    <Text style={styles.emptyText}>No skills added yet</Text>
+                    <Text style={styles.emptySubText}>Edit your profile to add skills</Text>
+                  </View>
+              )}
+            </View>
+
+            {/* ── Work Portfolio ── */}
+            <SectionHeader title="Work Portfolio" />
+            {portfolioImages.length > 0 ? (
+                <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.portfolioScroll}
+                >
+                  {(showAllPortfolio ? portfolioImages : portfolioImages.slice(0, 3)).map((uri, index) => (
+                      <View key={uri} style={styles.portfolioCard}>
+                        <Image
+                            source={{ uri }}
+                            style={styles.portfolioImage}
+                            resizeMode="cover"
+                        />
+                        <View style={styles.portfolioInfo}>
+                          <Text style={styles.portfolioName} numberOfLines={1}>
+                            Portfolio Image {index + 1}
+                          </Text>
+                        </View>
+                      </View>
+                  ))}
+
+                  {portfolioImages.length > 3 && (
+                      <TouchableOpacity
+                          style={styles.portfolioViewAllCard}
+                          onPress={() => setShowAllPortfolio(v => !v)}
+                          activeOpacity={0.8}
+                      >
+                        <Ionicons
+                            name={showAllPortfolio ? 'chevron-back-circle-outline' : 'grid-outline'}
+                            size={30}
+                            color={COLORS.accentLight}
+                        />
+                        <Text style={styles.portfolioViewAllText}>
+                          {showAllPortfolio ? 'Show\nLess' : 'View\nAll'}
+                        </Text>
+                        {!showAllPortfolio && (
+                            <Text style={styles.portfolioViewAllCount}>
+                              {portfolioImages.length} photos
+                            </Text>
+                        )}
+                      </TouchableOpacity>
+                  )}
+                </ScrollView>
+            ) : (
+                <TouchableOpacity
+                    style={styles.emptyPortfolioBtn}
+                    onPress={() => router.push('../ProviderProfileEdit')}
+                >
+                  <Feather name="plus-circle" size={22} color={COLORS.accentLight} />
+                  <Text style={styles.emptyPortfolioBtnText}>Add your first work photo</Text>
+                </TouchableOpacity>
+            )}
+
+            {/* ── Reviews — deferred until review system is built ── */}
+            <SectionHeader title="Reviews Received" />
+            <View style={styles.emptyCard}>
+              <Ionicons name="chatbubble-outline" size={32} color={COLORS.textMuted} />
               <Text style={styles.emptyText}>No reviews yet</Text>
               <Text style={styles.emptySubText}>
-                Complete jobs to start receiving reviews
+                Reviews will appear here once customers rate your work
               </Text>
             </View>
-          )}
 
-          <View style={{ height: 40 }} />
-        </ScrollView>
-      </Animated.View>
-    </LinearGradient>
+            <View style={{ height: 40 }} />
+          </ScrollView>
+        </Animated.View>
+      </LinearGradient>
   );
 }
 
@@ -520,11 +397,17 @@ export default function ProviderProfile(): React.JSX.Element {
 const styles = StyleSheet.create({
   gradient: { flex: 1 },
 
-  // Loading
+  // Loading / error
   loadingContainer: {
     flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14,
   },
   loadingText: { color: COLORS.textSub, fontSize: 15, fontWeight: '600' },
+  retryBtn: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 20, paddingVertical: 10, paddingHorizontal: 24,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)',
+  },
+  retryBtnText: { color: 'white', fontWeight: '700', fontSize: 14 },
 
   // Header
   header: {
@@ -717,17 +600,11 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: COLORS.cardBorder,
   },
   portfolioImage: { width: '100%', height: 130 },
-  portfolioImagePlaceholder: {
-    width: '100%', height: 130,
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    alignItems: 'center', justifyContent: 'center',
-  },
   portfolioInfo: { padding: 12 },
   portfolioName: {
     color: COLORS.text, fontSize: 14,
     fontWeight: '700', marginBottom: 4,
   },
-  portfolioDesc: { color: COLORS.textMuted, fontSize: 12, lineHeight: 18 },
   portfolioViewAllCard: {
     width: SCREEN_WIDTH * 0.38,
     backgroundColor: 'rgba(255,255,255,0.06)',
@@ -762,42 +639,6 @@ const styles = StyleSheet.create({
   emptyPortfolioBtnText: {
     color: COLORS.accentLight, fontSize: 14, fontWeight: '700',
   },
-
-  // Reviews
-  reviewCard: {
-    backgroundColor: COLORS.card,
-    borderRadius: 16, padding: 14,
-    borderWidth: 1, borderColor: COLORS.cardBorder,
-    marginBottom: 10,
-  },
-  reviewHeader: {
-    flexDirection: 'row', alignItems: 'flex-start',
-    gap: 12, marginBottom: 10,
-  },
-  reviewAvatar: {
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: COLORS.accent,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  reviewAvatarImg: { width: 40, height: 40, borderRadius: 20 },
-  reviewAvatarInitial: { color: '#fff', fontSize: 16, fontWeight: '800' },
-  reviewerName: { color: COLORS.text, fontSize: 14, fontWeight: '700' },
-  reviewMeta: {
-    flexDirection: 'row', alignItems: 'center',
-    gap: 8, marginTop: 2,
-  },
-  reviewDate: { color: COLORS.textMuted, fontSize: 11 },
-  reviewComment: { color: COLORS.textSub, fontSize: 13, lineHeight: 20 },
-  seeAllBtn: {
-    flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'center', gap: 6,
-    paddingVertical: 12,
-    backgroundColor: COLORS.card,
-    borderRadius: 12,
-    borderWidth: 1, borderColor: COLORS.cardBorder,
-    marginBottom: 4,
-  },
-  seeAllText: { color: COLORS.accentLight, fontSize: 13, fontWeight: '700' },
 
   // Empty states
   emptyCard: {

@@ -49,7 +49,8 @@ class Provider(Document):
     business_documents: List[dict]  = []
 
     # ── Stats ─────────────────────────────────────────────────────────────────
-    rating: float = 0.0
+    rating:       float = 0.0   # weighted running average
+    rating_count: int   = 0     # total number of ratings received
 
     # ── Status ────────────────────────────────────────────────────────────────
     is_active:  bool     = True

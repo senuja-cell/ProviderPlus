@@ -1,13 +1,3 @@
-/**
- * providerProfileService.ts
- * All API calls for the provider profile edit screen (ProviderProfileEdit).
- *
- * provider_routes is registered under prefix: /api/category-search
- * So all profile endpoints are at: /api/category-search/provider/me/...
- *
- * Token is stored under 'auth_token' by authService.ts loginUser()
- */
-
 import apiClient from './apiClient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -30,7 +20,9 @@ export interface ProviderData {
     verified_documents: number;
     pending_documents: number;
     rejected_documents: number;
-    completed_jobs?: number;
+    // ── New fields returned by the updated /me/profile endpoint ──────────────
+    completed_jobs: number;   // total count of completed bookings
+    member_since: string | null;  // year string e.g. "2023"
 }
 
 export interface ProfileUpdatePayload {
@@ -62,7 +54,7 @@ async function getAuthHeader(): Promise<{ Authorization: string }> {
 export async function getMyProfile(): Promise<ProviderData> {
     const headers = await getAuthHeader();
     const response = await apiClient.get(
-        'category-search/provider/me/profile',
+        'category-search/provider/me/profile/',
         { headers }
     );
     return response.data;
@@ -81,7 +73,7 @@ export async function updateMyProfile(
 ): Promise<{ message: string }> {
     const headers = await getAuthHeader();
     const response = await apiClient.patch(
-        'category-search/provider/me/profile',
+        'category-search/provider/me/profile/',
         payload,
         { headers }
     );
@@ -109,7 +101,7 @@ export async function uploadProfileImage(
     } as any);
 
     const response = await apiClient.post(
-        'category-search/provider/me/profile-image',
+        'category-search/provider/me/profile-image/',
         formData,
         { headers: { ...headers, 'Content-Type': 'multipart/form-data' } }
     );
@@ -138,7 +130,7 @@ export async function uploadPortfolioImages(
     });
 
     const response = await apiClient.post(
-        'category-search/provider/me/portfolio-images',
+        'category-search/provider/me/portfolio-images/',
         formData,
         { headers: { ...headers, 'Content-Type': 'multipart/form-data' } }
     );
@@ -168,16 +160,16 @@ export async function uploadIdentityDocument(
     });
 
     const response = await apiClient.post(
-        'category-search/provider/me/documents',
+        'category-search/provider/me/documents/',
         formData,
         { headers: { ...headers, 'Content-Type': 'multipart/form-data' } }
     );
     return response.data;
 }
 
-// ─── Existing public function (unchanged) ─────────────────────────────────────
+// ─── Existing public function  ─────────────────────────────────────
 
 export async function getProviderById(providerId: string): Promise<ProviderData> {
-    const response = await apiClient.get(`category-search/provider/${providerId}`);
+    const response = await apiClient.get(`category-search/provider/${providerId}/`);
     return response.data;
 }
