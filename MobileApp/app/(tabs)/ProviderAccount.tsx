@@ -221,7 +221,7 @@ export default function ProviderProfile(): React.JSX.Element {
               {/* Avatar */}
               <View style={styles.avatarWrapper}>
                 {provider.profile_image ? (
-                    <Image source={{ uri: provider.profile_image }} style={styles.avatar} />
+                    <Image source={provider.profile_image ? { uri: provider.profile_image } : require('../../assets/images/account.png')}/>
                 ) : (
                     <View style={styles.avatarPlaceholder}>
                       <Ionicons name="person" size={44} color="rgba(255,255,255,0.4)" />

@@ -4,7 +4,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 // --- CONFIGURATION ---
 export const LAPTOP_IP = '192.168.1.4';
 
-const IS_LOCAL = false;
+const IS_LOCAL = true;
 
 const BASE_URL = IS_LOCAL
     ? `http://${LAPTOP_IP}:8001/api`

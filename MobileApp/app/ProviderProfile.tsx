@@ -224,7 +224,7 @@ export default function ProviderProfile() {
 
           <View style={styles.profilePicWrapper}>
             <Image
-              source={{ uri: provider.profile_image ?? 'https://via.placeholder.com/150' }}
+              source={provider.profile_image ? { uri: provider.profile_image } : require('../assets/images/account.png')}
               style={styles.profilePic}
             />
             {provider.is_verified && (
